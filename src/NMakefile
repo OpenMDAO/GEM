@@ -1,0 +1,38 @@
+#
+!include ..\include\$(GEM_ARCH)
+SDIR = $(MAKEDIR)
+IDIR = $(SDIR)\..\include
+ODIR = $(GEM_BLOC)\obj
+
+OBJS = attribute.obj base.obj brep.obj drep.obj memory.obj model.obj \
+	fillArea.obj interp.obj prmCfit.obj prmGrid.obj prmUV.obj
+
+default:	start ..\lib\gem.lib end
+
+start:
+	cd $(ODIR)
+	xcopy $(SDIR)\*.c   /Q /Y
+	xcopy $(SDIR)\*.h   /Q /Y
+
+..\lib\gem.lib:	$(OBJS)
+	-del ..\lib\gem.lib
+	lib /out:..\lib\gem.lib $(OBJS)
+
+$(OBJS):	$(IDIR)\gem.h  $(IDIR)\brep.h   $(IDIR)\model.h \
+		$(IDIR)\drep.h $(IDIR)\memory.h $(IDIR)\attribute.h kernel.h
+.c.obj:
+	cl /c $(COPTS) /I. /I$(IDIR) $<
+
+end:
+	-del *.c *.h
+	cd $(SDIR)
+
+clean:
+	cd $(ODIR)
+	-del $(OBJS)
+	cd $(SDIR)
+
+cleanall:
+	cd $(ODIR)
+	-del ..\lib\gem.lib $(OBJS)
+	cd $(SDIR)

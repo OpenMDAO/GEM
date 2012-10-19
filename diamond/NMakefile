@@ -1,0 +1,59 @@
+#
+!include ..\include\$(GEM_ARCH)
+SDIR = $(MAKEDIR)
+IDIR = $(SDIR)\..\include
+ODIR = $(GEM_BLOC)\obj
+LDIR = $(GEM_BLOC)\lib
+TDIR = $(GEM_BLOC)\test
+
+OBJS = dbraattr.obj dboolean.obj dclose.obj dequiv.obj dinit.obj dload.obj \
+	dmprops.obj drelease.obj dtessel.obj dtopattr.obj devald.obj \
+	deval.obj dcurva.obj dinside.obj dregen.obj dcopy.obj dsave.obj
+
+
+default:	start $(TDIR)\dtest.exe end
+
+start:
+	cd $(ODIR)
+	xcopy $(SDIR)\*.c           /Q /Y
+	xcopy $(SDIR)\*.h           /Q /Y
+	xcopy $(OCSM_SRC)\udp.c     /Q /Y
+	xcopy $(OCSM_SRC)\OpenCSM.c /Q /Y
+
+$(TDIR)\dtest.exe:	dtest.obj $(LDIR)\diamond.lib $(LDIR)\gem.lib
+	cl /Fe$(TDIR)\dtest.exe dtest.obj $(LDIR)\gem.lib $(LDIR)\diamond.lib \
+		$(EGADSLIB)\egads.lib $(LOPTS)
+
+dtest.obj:	dtest.c $(IDIR)\gem.h $(EGADSINC)\egads.h
+	cl /c $(COPTS) -I$(IDIR) -I$(EGADSINC) dtest.c
+
+$(LDIR)\diamond.lib:	$(OBJS) OpenCSM.obj udp.obj
+	-del $(LDIR)\diamond.lib
+	lib /out:$(LDIR)\diamond.lib $(OBJS) OpenCSM.obj udp.obj
+
+udp.obj:	$(OCSM_SRC)\udp.c $(EGADSINC)\egads.h
+	cl /c $(COPTS) /DGEOM_EGADS /I$(EGADSINC) udp.c
+
+OpenCSM.obj:	$(OCSM_SRC)\OpenCSM.c $(OCSM_SRC)\common.h \
+		$(OCSM_SRC)\OpenCSM.h $(EGADSINC)\egads.h
+	cl /c $(COPTS) /DGEOM_EGADS /I$(OCSM_SRC) /I$(EGADSINC) OpenCSM.c
+
+$(OBJS):	$(IDIR)\gem.h $(IDIR)\brep.h $(IDIR)\model.h \
+		$(IDIR)\drep.h $(OCSM_SRC)\OpenCSM.h $(EGADSINC)\egads.h
+.c.obj:
+	cl /c $(COPTS) /DGEOM_EGADS /I$(IDIR) /I$(OCSM_SRC) /I$(EGADSINC) $<
+
+end:
+	-del *.c *.h *.def
+	cd $(SDIR)
+
+clean:
+	cd $(ODIR)
+	-del $(OBJS) OpenCSM.obj udp.obj dtest.obj
+	cd $(SDIR)
+
+cleanall:
+	-del $(LDIR)\diamond.lib $(TDIR)\dtest.exe
+	cd $(ODIR)
+	-del $(OBJS) OpenCSM.obj udp.obj dtest.obj
+	cd $(SDIR)

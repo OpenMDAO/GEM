@@ -1,0 +1,30 @@
+cd ~/Projects/GEM/src
+   make clean
+   make
+
+cd ../quartz
+   make clean
+   make
+
+cd ../diamond
+   make clean
+   make
+
+cd ../test
+   foreach f (*.make)
+      make -f $f clean
+      make -f $f
+   end
+
+cd ../pyRite
+   make clean
+   make
+
+cd test
+   python test_gem.py
+   python opt_gem.py
+      ESC
+      ESC
+
+cd ~/Projects/EGADS/DARWIN/test
+   dserve ../../parts/Piston.BRep

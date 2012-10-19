@@ -1,0 +1,15 @@
+#MAC OS X 10.5 & up -- 64 bit:
+#
+
+CCOMP  = gcc -m64 -g
+COPTS  = -O -fno-unit-at-a-time
+LOPTS  = rs
+RANLB  =
+XLIBS  = -L/usr/X11/lib -lX11 -framework CoreFoundation
+ifeq ($(MACOSX),10.5)
+GLIBS  = -L/usr/X11/lib -lGLU -lGL -lX11 -lXext -lpthread -framework IOKit -framework CoreFoundation -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib
+else
+GLIBS  = -L/usr/X11/lib -lGLU -lGL -lX11 -lXext -lpthread -framework IOKit -framework CoreFoundation
+endif
+SHEXT  = SO
+EXPRTS = -u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp

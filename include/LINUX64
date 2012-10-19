@@ -1,0 +1,10 @@
+#LINUX 64 bit:
+#
+CCOMP  = gcc -m64 -g
+COPTS  = -O -fno-unit-at-a-time -fPIC
+LOPTS  = rs
+RANLB  =
+XLIBS  = -L/usr/X11R6/lib -lX11 -lpthread
+GLIBS  = -L/usr/X11R6/lib -lGLU -lGL -lX11 -lXext -lpthread
+DLINK  = -rdynamic
+SHEXT  = so

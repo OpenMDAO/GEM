@@ -1,0 +1,7 @@
+# WINDOWS x64 using MSVS 9.0 (2008):
+#
+
+COPTS = /Ox /MD /D_CRT_SECURE_NO_DEPRECATE /DWIN32
+LOPTS = /link /NODEFAULTLIB:LIBCMT
+GLIBS = glu32.lib opengl32.lib user32.lib gdi32.lib
+MCOMP = mt

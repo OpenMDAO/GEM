@@ -1,0 +1,2 @@
+#
+lint -I../include -I$CAPRIINC *.c -exportlocal -uniondef -bufferoverflowhigh

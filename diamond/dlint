@@ -1,0 +1,2 @@
+#
+lint -I../include -DGEOM_EGADS -I$OCSM_SRC -I$EGADSINC *.c -exportlocal -castfcnptr -bufferoverflowhigh -uniondef -nestcomment
