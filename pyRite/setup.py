@@ -10,22 +10,19 @@ except ImportError:
     sys.exit(-1)
 
 # GEM_ARCH must be one of "DARWIN", "DARWIN64", LINUX64", "WIN32", or "WIN64"
-gem_arch = os.environ.get('GEM_ARCH')
+gem_arch = os.environ['GEM_ARCH']
 
 # GEM_TYPE can be set to "diamond" (the default) or "quartz"
-gem_type = os.environ.get('GEM_TYPE')
+gem_type = os.environ.get('GEM_TYPE', 'diamond')
 
 # These environment variables are usually set for GEM builds:
-if gem_arch == 'WIN32':
-    gemlib = os.environ.get('GEM_BLOC') + '\lib'
-elif gem_arch == 'WIN64':
-    gemlib = os.environ.get('GEM_BLOC') + '\lib'
-else:
-    gemlib = os.environ.get('GEM_BLOC') + '/lib'
+gemlib = os.path.join(os.environ['GEM_BLOC'], 'lib')
 
-egadsinc = os.environ.get('EGADSINC')
-egadslib = os.environ.get('EGADSLIB')
-caprilib = os.environ.get('CAPRILIB')
+if gem_type == 'diamond':
+    egadsinc = os.environ['EGADSINC']
+    egadslib = os.environ['EGADSLIB']
+elif gem_type == 'quartz':
+    caprilib = os.environ['CAPRILIB']
 
 if gem_arch == 'DARWIN':
     os.environ['ARCHFLAGS'] = '-arch i386'
