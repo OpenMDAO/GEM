@@ -1,5 +1,13 @@
 from distutils.core import setup, Extension
 import os
+import sys
+
+try:
+    import numpy
+    numpy_include = os.path.join(os.path.dirname(numpy.__file__), 'core', 'include')
+except ImportError:
+    print 'numpy was not found.  Aborting build'
+    sys.exit(-1)
 
 # GEM_ARCH must be one of "DARWIN", "DARWIN64", LINUX64", "WIN32", or "WIN64"
 gem_arch = os.environ.get('GEM_ARCH')
@@ -25,7 +33,7 @@ if gem_arch == 'DARWIN':
         print '\nMaking "gem.so" for "quartz" (on DARWIN)\n'
 
         gem_include_dirs       = ['../include',
-                                  '/System/Library/Frameworks/Python.framework/Versions/Current/Extras/lib/python/numpy/core/include']
+                                  numpy_include]
         gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib,
@@ -42,7 +50,7 @@ if gem_arch == 'DARWIN':
         print '\nMaking "gem.so" for "diamond" (on DARWIN)\n'
 
         gem_include_dirs       = ['../include',
-                                   '/System/Library/Frameworks/Python.framework/Versions/Current/Extras/lib/python/numpy/core/include']
+                                  numpy_include]
         gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   egadslib,
@@ -70,7 +78,7 @@ elif gem_arch == 'DARWIN64':
         print '\nMaking "gem.so" for "quartz" (on DARWIN64)\n'
 
         gem_include_dirs       = ['../include',
-                                  '/System/Library/Frameworks/Python.framework/Versions/Current/Extras/lib/python/numpy/core/include']
+                                  numpy_include]
         gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib,
@@ -87,7 +95,7 @@ elif gem_arch == 'DARWIN64':
         print '\nMaking "gem.so" for "diamond" (on DARWIN64)\n'
 
         gem_include_dirs       = ['../include',
-                                  '/System/Library/Frameworks/Python.framework/Versions/Current/Extras/lib/python/numpy/core/include']
+                                  numpy_include]
         gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   egadslib,
@@ -154,7 +162,7 @@ elif gem_arch == 'WIN32':
         print '\nMaking "gem.so" for "quartz" (on WIN32)\n'
 
         gem_include_dirs       = ['..\include',
-				  'D:\Python27\Lib\site-packages\\numpy\core\include']
+                                  numpy_include]
         gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib]
@@ -167,7 +175,7 @@ elif gem_arch == 'WIN32':
         print '\nMaking "gem.so" for "diamond" (on WIN32)\n'
 
         gem_include_dirs       = ['..\include',
-				  'D:\Python27\Lib\site-packages\\numpy\core\include']
+                                  numpy_include]
         gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   egadslib]
@@ -181,9 +189,9 @@ elif gem_arch == 'WIN32':
         gem_include_dirs.append(egadsinc)
         gem_extra_compile_args.append('-DGEM_GRAPHICS=gv')
         if gem_type == 'quartz':
-           gem_libraries.append('gvIMD')
+            gem_libraries.append('gvIMD')
         else:
-           gem_libraries.append('gv')
+            gem_libraries.append('gv')
         gem_libraries.append('GLU32')
         gem_libraries.append('OpenGL32')
         gem_libraries.append('User32')
@@ -193,7 +201,7 @@ elif gem_arch == 'WIN64':
         print '\nMaking "gem.so" for "quartz" (on WIN64)\n'
 
         gem_include_dirs       = ['..\include',
-				  'D:\Python27\Lib\site-packages\\numpy\core\include']
+                                  numpy_include]
         gem_extra_compile_args = ['-DLONGLONG']
         gem_library_dirs       = [gemlib,
                                   caprilib]
@@ -206,7 +214,7 @@ elif gem_arch == 'WIN64':
         print '\nMaking "gem.so" for "diamond" (on WIN64)\n'
 
         gem_include_dirs       = ['..\include',
-				  'D:\Python27\Lib\site-packages\\numpy\core\include']
+                                  numpy_include]
         gem_extra_compile_args = ['-DLONGLONG']
         gem_library_dirs       = [gemlib,
                                   egadslib]
@@ -220,9 +228,9 @@ elif gem_arch == 'WIN64':
         gem_include_dirs.append(egadsinc)
         gem_extra_compile_args.append('-DGEM_GRAPHICS=gv')
         if gem_type == 'quartz':
-           gem_libraries.append('gvIMD')
+            gem_libraries.append('gvIMD')
         else:
-           gem_libraries.append('gv')
+            gem_libraries.append('gv')
         gem_libraries.append('GLU32')
         gem_libraries.append('OpenGL32')
         gem_libraries.append('User32')
