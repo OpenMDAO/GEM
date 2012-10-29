@@ -1,5 +1,6 @@
 from distutils.core import setup, Extension
 import os
+import sys
 
 # GEM_ARCH must be one of "DARWIN", "DARWIN64", LINUX64", "WIN32", or "WIN64"
 gem_arch = os.environ.get('GEM_ARCH')
@@ -8,24 +9,26 @@ gem_arch = os.environ.get('GEM_ARCH')
 gem_type = os.environ.get('GEM_TYPE')
 
 # These environment variables are usually set for GEM builds:
-if gem_arch == 'WIN32':
-    gemlib = os.environ.get('GEM_BLOC') + '\lib'
-elif gem_arch == 'WIN64':
-    gemlib = os.environ.get('GEM_BLOC') + '\lib'
-else:
-    gemlib = os.environ.get('GEM_BLOC') + '/lib'
+gemlib = os.path.join(os.environ['GEM_BLOC'], 'lib')
 
 egadsinc = os.environ.get('EGADSINC')
 egadslib = os.environ.get('EGADSLIB')
 caprilib = os.environ.get('CAPRILIB')
+
+try:
+    import numpy
+    numpy_include = os.path.join(os.path.dirname(numpy.__file__), 
+                                 'core', 'include')
+except ImportError:
+    print 'numpy not found. aborting'
+    sys.exit(-1)
 
 if gem_arch == 'DARWIN':
     os.environ['ARCHFLAGS'] = '-arch i386'
     if gem_type == 'quartz':
         print '\nMaking "gem.so" for "quartz" (on DARWIN)\n'
 
-        gem_include_dirs       = ['../include',
-                                  '/System/Library/Frameworks/Python.framework/Versions/Current/Extras/lib/python/numpy/core/include']
+        gem_include_dirs       = ['../include', numpy_include]
         gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib,
@@ -258,3 +261,8 @@ setup (name = 'Gem',
        version = '0.90',
        description = 'Python interface to GEM',
        ext_modules = [module1])
+
+
+
+
+

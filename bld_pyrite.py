@@ -107,6 +107,31 @@ if __name__ == '__main__':
         env['MACOSX'] = '.'.join(platform.mac_ver()[0].split('.')[0:2])
         
 
-    import pprint
-    pprint.pprint(env)
+    # create files to allow users to set their environment later when
+    # using pyrite
+    shfile = open('genEnv.sh', 'w')
+    cshfile = open('genEnv.csh', 'w')
+    try:
+        for name, val in env.items():
+            shfile.write('export %s=%s\n' % (name, val))
+            cshfile.write('setenv %s %s\n' % (name, val))
+    finally:
+        shfile.close()
+        cshfile.close()
+        
+    # update the current environment
+    os.environ.update(env)
     
+    esp_src = join(esp_dir,'src')
+    ret = subprocess.call('make clean', shell=True, env=os.environ, 
+                          cwd=esp_src)
+    ret = subprocess.call('make', shell=True, env=os.environ, 
+                          cwd=esp_src)
+    
+    # collect egads, opencsm libs
+    
+    # collect OCC libs
+    
+    # create MANIFEST.in?
+    
+    # run setup.py
