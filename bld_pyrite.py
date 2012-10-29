@@ -2,8 +2,12 @@
 import os
 import sys
 import subprocess
-from os.path import join, dirname, abspath, expanduser
+from os.path import join, dirname, basename, abspath, expanduser, isdir, isfile
 import platform
+import shutil
+import StringIO
+import fnmatch
+
 
 def expand_path(path):
     if path is not None:
@@ -45,6 +49,26 @@ def _get_cas_rev(cas_root):
                         if len(parts)>1 and parts[0] == '#define' and parts[1] == 'OCC_VERSION':
                             return parts[2]
 
+def _get_occ_libs():
+    if sys.platform.startswith('linux'):
+        cmd = 'ldd %s' % join(pyrite_libs, 'libegads.so')
+    elif sys.platform == 'darwin':
+        cmd = 'otool -L %s' % join(pyrite_libs, 'libegads.dylib')
+    elif sys.platform.startswith("win"):
+        pass  # FIXME: Windows has no built-in way to get lib dependencies...
+    stream = StringIO.StringIO()
+    proc = subprocess.Popen('ldd %s' % join(pyrite_libs, 'libegads.so'), 
+                            shell=True, env=os.environ, stdout=subprocess.PIPE)
+    out, err = proc.communicate()
+    
+    if proc.returncode != 0:
+        print "problem occurred while retrieving library dependencies from libegads"
+        sys.exit(proc.returncode)
+    
+    for line in out.split('\n'):
+        parts = fnmatch.filter(line.split(), '*lib*')
+        print parts
+        
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
@@ -55,6 +79,8 @@ if __name__ == '__main__':
                         dest='casroot', help="OpenCASCADE root directory")
     parser.add_argument("--casrev", action="store", type=str,
                         dest='casrev', help="OpenCASCADE revision number")
+    parser.add_argument("-c", "--clean", action="store_true", dest="clean",
+                        help="do a make clean before building")
    
     options = parser.parse_args()
     
@@ -63,18 +89,18 @@ if __name__ == '__main__':
     esp_dir = expand_path(options.esp_dir)
     
     if cas_root is None:
-        print "OpenCASCADE directory must be supplied"
+        print "OpenCASCADE directory must be supplied\n"
         parser.print_help()
         sys.exit(-1)
-    elif not os.path.isdir(cas_root):
-        print "OpenCASCADE directory doesn't exist"
+    elif not isdir(cas_root):
+        print "OpenCASCADE directory doesn't exist\n"
         sys.exit(-1)
     if esp_dir is None:
-        print "Engineering Sketchpad directory must be supplied"
+        print "Engineering Sketchpad directory must be supplied\n"
         parser.print_help()
         sys.exit(-1)
-    elif not os.path.isdir(esp_dir):
-        print "Engineering Sketchpad directory doesn't exist"
+    elif not isdir(esp_dir):
+        print "Engineering Sketchpad directory doesn't exist\n"
         sys.exit(-1)
         
     cas_lib = join(cas_root, 'lib')
@@ -83,7 +109,7 @@ if __name__ == '__main__':
         cas_rev = _get_cas_rev(cas_root)
         
     if cas_rev is None:
-        print "Can't determine OpenCASCADE revision"
+        print "Can't determine OpenCASCADE revision\n"
         sys.exit(-1)
 
     lib_path_tup = _get_dlibpath()
@@ -107,6 +133,7 @@ if __name__ == '__main__':
         env['MACOSX'] = '.'.join(platform.mac_ver()[0].split('.')[0:2])
         
 
+    # TODO: don't think this is necessary. may just need LD_LIBRARY_PATH or equivalent
     # create files to allow users to set their environment later when
     # using pyrite
     shfile = open('genEnv.sh', 'w')
@@ -123,14 +150,24 @@ if __name__ == '__main__':
     os.environ.update(env)
     
     esp_src = join(esp_dir,'src')
-    ret = subprocess.call('make clean', shell=True, env=os.environ, 
-                          cwd=esp_src)
+    if options.clean:
+        ret = subprocess.call('make clean', shell=True, env=os.environ, 
+                              cwd=esp_src)
     ret = subprocess.call('make', shell=True, env=os.environ, 
                           cwd=esp_src)
     
+    pyrite_libs = join(dirname(__file__), 'pyRite', 'lib')
+    if not isdir(pyrite_libs):
+        os.mkdir(pyrite_libs)
+    
+    esp_libs = join(esp_dir, 'lib')
     # collect egads, opencsm libs
+    for name in os.listdir(esp_libs):
+        shutil.copy(join(esp_libs, name), join(pyrite_libs, name))
     
     # collect OCC libs
+    for libpath in _get_occ_libs():
+        shutil.copy(libpath, join(pyrite_libs, basename(libpath)))
     
     # create MANIFEST.in?
     

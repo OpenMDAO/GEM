@@ -33,13 +33,14 @@ except ImportError:
     print 'numpy not found. aborting'
     sys.exit(-1)
 
+print '\nMaking "gem.so" for "%s" (on %s)\n' % (gem_type, GEM_ARCH)
+
+gem_include_dirs       = ['../include', numpy_include]
+
 if gem_arch == 'DARWIN':
     os.environ['ARCHFLAGS'] = '-arch i386'
+    gem_extra_compile_args = []
     if gem_type == 'quartz':
-        print '\nMaking "gem.so" for "quartz" (on DARWIN)\n'
-
-        gem_include_dirs       = ['../include', numpy_include]
-        gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib,
                                   '/usr/X11/lib']
@@ -52,11 +53,6 @@ if gem_arch == 'DARWIN':
                                   'X11']
         gem_extra_link_args    = ['-u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit']
     else:
-        print '\nMaking "gem.so" for "diamond" (on DARWIN)\n'
-
-        gem_include_dirs       = ['../include',
-                                  numpy_include]
-        gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   egadslib,
                                   '/usr/X11/lib']
@@ -79,12 +75,8 @@ if gem_arch == 'DARWIN':
         gem_extra_link_args.append('-framework IOKit -framework CoreFoundation')
 elif gem_arch == 'DARWIN64':
     os.environ['ARCHFLAGS'] = '-arch x86_64'
+    gem_extra_compile_args = []
     if gem_type == 'quartz':
-        print '\nMaking "gem.so" for "quartz" (on DARWIN64)\n'
-
-        gem_include_dirs       = ['../include',
-                                  numpy_include]
-        gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib,
                                   '/usr/X11/lib']
@@ -97,11 +89,6 @@ elif gem_arch == 'DARWIN64':
                                   'X11']
         gem_extra_link_args    = ['-u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit']
     else:
-        print '\nMaking "gem.so" for "diamond" (on DARWIN64)\n'
-
-        gem_include_dirs       = ['../include',
-                                  numpy_include]
-        gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   egadslib,
                                   '/usr/X11/lib']
@@ -123,11 +110,8 @@ elif gem_arch == 'DARWIN64':
         gem_libraries.append('pthread')
         gem_extra_link_args.append('-framework IOKit -framework CoreFoundation')
 elif gem_arch == 'LINUX64':
+    gem_extra_compile_args = []
     if gem_type == 'quartz':
-        print '\nMaking "gem.so" for "quartz" (on LINUX64)\n'
-
-        gem_include_dirs       = ['../include']
-        gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib,
                                   '/usr/X11R6/lib']
@@ -140,10 +124,6 @@ elif gem_arch == 'LINUX64':
                                   'X11']
         gem_extra_link_args    = ['-rdynamic']
     else:
-        print '\nMaking "gem.so" for "diamond" (on LINUX64)\n'
-
-        gem_include_dirs       = ['../include']
-        gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   egadslib]
         gem_libraries          = ['gem',
@@ -163,31 +143,21 @@ elif gem_arch == 'LINUX64':
         gem_libraries.append('Xext')
         gem_libraries.append('pthread')
 elif gem_arch == 'WIN32':
+    gem_extra_compile_args = []
+    gem_extra_link_args    = []
     if gem_type == 'quartz':
-        print '\nMaking "gem.so" for "quartz" (on WIN32)\n'
-
-        gem_include_dirs       = ['..\include',
-                                  numpy_include]
-        gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib]
         gem_libraries          = ['gem',
                                   'quartz',
                                   'capriDyn',
                                   'dcapri']
-        gem_extra_link_args    = []
     else:
-        print '\nMaking "gem.so" for "diamond" (on WIN32)\n'
-
-        gem_include_dirs       = ['..\include',
-                                  numpy_include]
-        gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   egadslib]
         gem_libraries          = ['gem',
                                   'diamond',
                                   'egads']
-        gem_extra_link_args    = []
     if (os.environ.get('GEM_GRAPHICS') == "gv"):
         print "...gv graphics is enabled\n"
 
@@ -202,31 +172,21 @@ elif gem_arch == 'WIN32':
         gem_libraries.append('User32')
         gem_libraries.append('GDI32')
 elif gem_arch == 'WIN64':
+    gem_extra_compile_args = ['-DLONGLONG']
+    gem_extra_link_args    = []
     if gem_type == 'quartz':
-        print '\nMaking "gem.so" for "quartz" (on WIN64)\n'
-
-        gem_include_dirs       = ['..\include',
-                                  numpy_include]
-        gem_extra_compile_args = ['-DLONGLONG']
         gem_library_dirs       = [gemlib,
                                   caprilib]
         gem_libraries          = ['gem',
                                   'quartz',
                                   'capriDyn',
                                   'dcapri']
-        gem_extra_link_args    = []
     else:
-        print '\nMaking "gem.so" for "diamond" (on WIN64)\n'
-
-        gem_include_dirs       = ['..\include',
-                                  numpy_include]
-        gem_extra_compile_args = ['-DLONGLONG']
         gem_library_dirs       = [gemlib,
                                   egadslib]
         gem_libraries          = ['gem',
                                   'diamond',
                                   'egads']
-        gem_extra_link_args    = []
     if (os.environ.get('GEM_GRAPHICS') == "gv"):
         print "...gv graphics is enabled\n"
 
@@ -240,8 +200,6 @@ elif gem_arch == 'WIN64':
         gem_libraries.append('OpenGL32')
         gem_libraries.append('User32')
         gem_libraries.append('GDI32')
-else:
-    assert False, 'GEM_ARCH is not (correctly) set'
 
 # Legal keyword arguments for the Extension constructor
 #    'name', 'sources', 'include_dirs',
