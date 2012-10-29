@@ -4,7 +4,8 @@ import sys
 
 try:
     import numpy
-    numpy_include = os.path.join(os.path.dirname(numpy.__file__), 'core', 'include')
+    numpy_include = os.path.join(os.path.dirname(numpy.__file__), 
+                                 'core', 'include')
 except ImportError:
     print 'numpy was not found.  Aborting build'
     sys.exit(-1)
@@ -24,13 +25,20 @@ if gem_type == 'diamond':
 elif gem_type == 'quartz':
     caprilib = os.environ['CAPRILIB']
 
+try:
+    import numpy
+    numpy_include = os.path.join(os.path.dirname(numpy.__file__), 
+                                 'core', 'include')
+except ImportError:
+    print 'numpy not found. aborting'
+    sys.exit(-1)
+
 if gem_arch == 'DARWIN':
     os.environ['ARCHFLAGS'] = '-arch i386'
     if gem_type == 'quartz':
         print '\nMaking "gem.so" for "quartz" (on DARWIN)\n'
 
-        gem_include_dirs       = ['../include',
-                                  numpy_include]
+        gem_include_dirs       = ['../include', numpy_include]
         gem_extra_compile_args = []
         gem_library_dirs       = [gemlib,
                                   caprilib,
@@ -263,3 +271,8 @@ setup (name = 'Gem',
        version = '0.90',
        description = 'Python interface to GEM',
        ext_modules = [module1])
+
+
+
+
+
