@@ -8,6 +8,11 @@ import shutil
 import StringIO
 import fnmatch
 
+libext = {
+    'darwin': 'dylib',
+    'linux2': 'so',
+    'win32': 'dll',
+}
 
 def expand_path(path):
     if path is not None:
@@ -49,26 +54,14 @@ def _get_cas_rev(cas_root):
                         if len(parts)>1 and parts[0] == '#define' and parts[1] == 'OCC_VERSION':
                             return parts[2]
 
-def _get_occ_libs():
+def _get_occ_libs(libpath):
     if sys.platform.startswith('linux'):
-        cmd = 'ldd %s' % join(pyrite_libs, 'libegads.so')
+        libs = fnmatch.filter(os.listdir(libpath), "*.so")
     elif sys.platform == 'darwin':
-        cmd = 'otool -L %s' % join(pyrite_libs, 'libegads.dylib')
+        libs = fnmatch.filter(os.listdir(libpath), "*.dylib")
     elif sys.platform.startswith("win"):
-        pass  # FIXME: Windows has no built-in way to get lib dependencies...
-    stream = StringIO.StringIO()
-    proc = subprocess.Popen('ldd %s' % join(pyrite_libs, 'libegads.so'), 
-                            shell=True, env=os.environ, stdout=subprocess.PIPE)
-    out, err = proc.communicate()
-    
-    if proc.returncode != 0:
-        print "problem occurred while retrieving library dependencies from libegads"
-        sys.exit(proc.returncode)
-    
-    for line in out.split('\n'):
-        parts = fnmatch.filter(line.split(), '*lib*')
-        print parts
-        
+        libs = fnmatch.filter(os.listdir(libpath), "*.dll")
+    return [join(libpath, lib) for lib in libs]
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
@@ -81,6 +74,10 @@ if __name__ == '__main__':
                         dest='casrev', help="OpenCASCADE revision number")
     parser.add_argument("-c", "--clean", action="store_true", dest="clean",
                         help="do a make clean before building")
+    parser.add_argument("--install", action="store_true", dest="install",
+                        help="install pyRite")
+    parser.add_argument("--bdist_egg", action="store_true", dest="bdist_egg",
+                        help="build a binary egg for pyRite")
    
     options = parser.parse_args()
     
@@ -156,19 +153,30 @@ if __name__ == '__main__':
     ret = subprocess.call('make', shell=True, env=os.environ, 
                           cwd=esp_src)
     
-    pyrite_libs = join(dirname(__file__), 'pyRite', 'lib')
-    if not isdir(pyrite_libs):
-        os.mkdir(pyrite_libs)
+    pyrite_libdir = join(dirname(abspath(__file__)), 'pyRite', 'pyRIte', 'lib')
+    if not isdir(pyrite_libdir):
+        os.mkdir(pyrite_libdir)
     
     esp_libs = join(esp_dir, 'lib')
     # collect egads, opencsm libs
     for name in os.listdir(esp_libs):
-        shutil.copy(join(esp_libs, name), join(pyrite_libs, name))
+        shutil.copy(join(esp_libs, name), join(pyrite_libdir, name))
     
     # collect OCC libs
-    for libpath in _get_occ_libs():
-        shutil.copy(libpath, join(pyrite_libs, basename(libpath)))
+    for libpath in _get_occ_libs(cas_lib):
+        shutil.copy(libpath, join(pyrite_libdir, basename(libpath)))
     
     # create MANIFEST.in?
-    
+    manif = open(join(dirname(pyrite_libdir), 'MANIFEST.in'), 'w')
+    try:
+        manif.write("recursive-include lib *.%s\n" % libext[sys.platform])
+        manif.write("recursive-include test *\n")
+    finally:
+        manif.close()
+
     # run setup.py
+    if options.bdist_egg:
+        ret = subprocess.call("python setup.py bdist_egg", 
+                              shell=True, env=os.environ, 
+                              cwd=dirname(dirname(pyrite_libdir)))
+  

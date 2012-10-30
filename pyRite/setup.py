@@ -1,4 +1,7 @@
-from distutils.core import setup, Extension
+try:
+    from setuptools import setup, Extension
+except ImportError:
+    from distutils.core import setup, Extension
 import os
 import sys
 
@@ -25,15 +28,7 @@ if gem_type == 'diamond':
 elif gem_type == 'quartz':
     caprilib = os.environ['CAPRILIB']
 
-try:
-    import numpy
-    numpy_include = os.path.join(os.path.dirname(numpy.__file__), 
-                                 'core', 'include')
-except ImportError:
-    print 'numpy not found. aborting'
-    sys.exit(-1)
-
-print '\nMaking "gem.so" for "%s" (on %s)\n' % (gem_type, GEM_ARCH)
+print '\nMaking "gem.so" for "%s" (on %s)\n' % (gem_type, gem_arch)
 
 gem_include_dirs       = ['../include', numpy_include]
 
@@ -215,7 +210,7 @@ module1 = Extension('gem',
                     libraries          = gem_libraries,
                     extra_link_args    = gem_extra_link_args,
                     language           = 'c',
-                    sources            = ['pyRite.c'])
+                    sources            = ['pyRite/pyRite.c'])
 
 # Legal keyword arguments for the setup() function
 #    'distclass', 'script_name', 'script_args', 'options',
@@ -225,10 +220,13 @@ module1 = Extension('gem',
 #    'platforms', 'classifiers', 'download_url',
 #    'requires', 'provides', 'obsoletes'
 
-setup (name = 'Gem',
+setup (name = 'pyRite',
        version = '0.90',
        description = 'Python interface to GEM',
-       ext_modules = [module1])
+       ext_modules = [module1],
+       packages = ['pyRite'],
+       package_data = { 'pyRite': ['test/*.py', 'lib/*.so', 'lib/*.dylib']},
+      )
 
 
 
