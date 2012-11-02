@@ -178,7 +178,7 @@ module1 = Extension('gem',
                     libraries          = gem_libraries,
                     extra_link_args    = gem_extra_link_args,
                     language           = 'c',
-                    sources            = ['pyRite/pyRite.c'])
+                    sources            = ['pyrite/pyrite.c'])
 
 # Legal keyword arguments for the setup() function
 #    'distclass', 'script_name', 'script_args', 'options',
@@ -188,13 +188,13 @@ module1 = Extension('gem',
 #    'platforms', 'classifiers', 'download_url',
 #    'requires', 'provides', 'obsoletes'
 
-setup (name = 'pyRite',
+setup (name = 'pyrite',
        version = '0.90',
        description = 'Python interface to GEM',
        zip_safe = False,
        ext_modules = [module1],
-       packages = ['pyRite'],
-       package_data = { 'pyRite': ['test/*.py', 'lib/*%s' % lib_ext]},
+       packages = ['pyrite'],
+       package_data = { 'pyrite': ['test/*.py', 'lib/*%s' % lib_ext]},
       ) 
 
 
