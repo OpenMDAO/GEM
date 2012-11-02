@@ -1,0 +1,30 @@
+To make the "gem" module
+========================
+
+cd Projects/GEM/pyrite
+
+setenv GEM_ARCH DARWIN       (-or- DARWIN64 -or- LINUX64 -or- WIN32 -or- WIN64)
+setenv GEM_TYPE diamond      (-or- quartz)
+setenv GEM_GRAPHICS gv
+
+make
+
+To run the "gem" module interactively
+=====================================
+
+cd test
+   python
+      import gem
+
+      Ctrl-D        (to exit python interpreter)
+
+To run the "gem" module in batch mode
+=====================================
+
+cd test
+   python test_gem.py
+
+   python demo_gem.py
+      q             (to quit help)
+
+   python opt_gem.py
