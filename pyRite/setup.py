@@ -1,7 +1,4 @@
-try:
-    from setuptools import setup, Extension
-except ImportError:
-    from distutils.core import setup, Extension
+from setuptools import setup, Extension
 import os
 import sys
 
@@ -32,8 +29,12 @@ print '\nMaking "gem.so" for "%s" (on %s)\n' % (gem_type, gem_arch)
 
 gem_include_dirs       = ['../include', numpy_include]
 
-if gem_arch == 'DARWIN':
-    os.environ['ARCHFLAGS'] = '-arch i386'
+if gem_arch.startswith('DARWIN'):
+    lib_ext = ".dylib"
+    if gem_arch == "DARWIN64":
+        os.environ['ARCHFLAGS'] = '-arch x86_64'
+    else:
+        os.environ['ARCHFLAGS'] = '-arch i386'
     gem_extra_compile_args = []
     if gem_type == 'quartz':
         gem_library_dirs       = [gemlib,
@@ -68,43 +69,8 @@ if gem_arch == 'DARWIN':
         gem_libraries.append('Xext')
         gem_libraries.append('pthread')
         gem_extra_link_args.append('-framework IOKit -framework CoreFoundation')
-elif gem_arch == 'DARWIN64':
-    os.environ['ARCHFLAGS'] = '-arch x86_64'
-    gem_extra_compile_args = []
-    if gem_type == 'quartz':
-        gem_library_dirs       = [gemlib,
-                                  caprilib,
-                                  '/usr/X11/lib']
-        gem_libraries          = ['gem',
-                                  'quartz',
-                                  'gem',
-                                  'quartz',
-                                  'capriDyn',
-                                  'dcapri',
-                                  'X11']
-        gem_extra_link_args    = ['-u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit']
-    else:
-        gem_library_dirs       = [gemlib,
-                                  egadslib,
-                                  '/usr/X11/lib']
-        gem_libraries          = ['gem',
-                                  'diamond',
-                                  'egads']
-        gem_extra_link_args    = []
-
-    if (os.environ.get('GEM_GRAPHICS') == "gv"):
-        print "...gv graphics is enabled\n"
-
-        gem_include_dirs.append(egadsinc)
-        gem_extra_compile_args.append('-DGEM_GRAPHICS=gv')
-        gem_libraries.append('gv')
-        gem_libraries.append('GLU')
-        gem_libraries.append('GL')
-        gem_libraries.append('X11')
-        gem_libraries.append('Xext')
-        gem_libraries.append('pthread')
-        gem_extra_link_args.append('-framework IOKit -framework CoreFoundation')
 elif gem_arch == 'LINUX64':
+    lib_ext = ".so"
     gem_extra_compile_args = []
     if gem_type == 'quartz':
         gem_library_dirs       = [gemlib,
@@ -138,6 +104,7 @@ elif gem_arch == 'LINUX64':
         gem_libraries.append('Xext')
         gem_libraries.append('pthread')
 elif gem_arch == 'WIN32':
+    lib_ext = ".dll"
     gem_extra_compile_args = []
     gem_extra_link_args    = []
     if gem_type == 'quartz':
@@ -167,6 +134,7 @@ elif gem_arch == 'WIN32':
         gem_libraries.append('User32')
         gem_libraries.append('GDI32')
 elif gem_arch == 'WIN64':
+    lib_ext = ".dll"
     gem_extra_compile_args = ['-DLONGLONG']
     gem_extra_link_args    = []
     if gem_type == 'quartz':
@@ -223,11 +191,11 @@ module1 = Extension('gem',
 setup (name = 'pyRite',
        version = '0.90',
        description = 'Python interface to GEM',
+       zip_safe = False,
        ext_modules = [module1],
        packages = ['pyRite'],
-       package_data = { 'pyRite': ['test/*.py', 'lib/*.so', 'lib/*.dylib']},
-      )
-
+       package_data = { 'pyRite': ['test/*.py', 'lib/*%s' % lib_ext]},
+      ) 
 
 
 

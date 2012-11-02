@@ -1,2 +1,1 @@
-graft pyRite/lib
-graft pyRite/test
+graft pyrite/test

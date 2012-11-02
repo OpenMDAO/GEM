@@ -75,9 +75,11 @@ if __name__ == '__main__':
     parser.add_argument("-c", "--clean", action="store_true", dest="clean",
                         help="do a make clean before building")
     parser.add_argument("--install", action="store_true", dest="install",
-                        help="install pyRite")
+                        help="install pyrite")
     parser.add_argument("--bdist_egg", action="store_true", dest="bdist_egg",
-                        help="build a binary egg for pyRite")
+                        help="build a binary egg for pyrite")
+    parser.add_argument("--sdist", action="store_true", dest="sdist",
+                        help="build a source distribution for pyrite")
    
     options = parser.parse_args()
     
@@ -153,7 +155,7 @@ if __name__ == '__main__':
     ret = subprocess.call('make', shell=True, env=os.environ, 
                           cwd=esp_src)
     
-    pyrite_libdir = join(dirname(abspath(__file__)), 'pyRite', 'pyRIte', 'lib')
+    pyrite_libdir = join(dirname(abspath(__file__)), 'pyrite', 'pyrite', 'lib')
     if not isdir(pyrite_libdir):
         os.mkdir(pyrite_libdir)
     
@@ -166,17 +168,22 @@ if __name__ == '__main__':
     for libpath in _get_occ_libs(cas_lib):
         shutil.copy(libpath, join(pyrite_libdir, basename(libpath)))
     
-    # create MANIFEST.in?
-    manif = open(join(dirname(pyrite_libdir), 'MANIFEST.in'), 'w')
-    try:
-        manif.write("recursive-include lib *.%s\n" % libext[sys.platform])
-        manif.write("recursive-include test *\n")
-    finally:
-        manif.close()
+    ## create MANIFEST.in?
+    #manif = open(join(dirname(pyrite_libdir), 'MANIFEST.in'), 'w')
+    #try:
+        #manif.write("recursive-include lib *.%s\n" % libext[sys.platform])
+        #manif.write("recursive-include test *\n")
+    #finally:
+        #manif.close()
 
     # run setup.py
     if options.bdist_egg:
         ret = subprocess.call("python setup.py bdist_egg", 
                               shell=True, env=os.environ, 
                               cwd=dirname(dirname(pyrite_libdir)))
+    if options.sdist:
+        ret = subprocess.call("python setup.py sdist", 
+                              shell=True, env=os.environ, 
+                              cwd=dirname(dirname(pyrite_libdir)))
+
   

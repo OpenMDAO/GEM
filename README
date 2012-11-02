@@ -16,7 +16,7 @@ cd ../test
       make -f $f
    end
 
-cd ../pyRite
+cd ../pyrite
    make clean
    make
 
