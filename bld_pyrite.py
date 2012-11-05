@@ -2,11 +2,12 @@
 import os
 import sys
 import subprocess
-from os.path import join, dirname, basename, abspath, expanduser, isdir, isfile
+from os.path import join, dirname, basename, abspath, expanduser, isdir, isfile, expandvars
 import platform
 import shutil
 import StringIO
 import fnmatch
+import struct
 
 libext = {
     'darwin': 'dylib',
@@ -16,9 +17,9 @@ libext = {
 
 def expand_path(path):
     if path is not None:
-        return abspath(expanduser(path))
+        return abspath(expandvars(expanduser(path)))
 
-def _get_dlibpath():
+def _get_dlibpath(egads_lib, cas_lib):
     _lib_path_dct = {
         'darwin': 'DYLD_LIBRARY_PATH',
         'win32': 'PATH',
@@ -35,13 +36,22 @@ def _get_dlibpath():
     return (pname, os.pathsep.join(parts))
 
 def _get_arch():
-    """Get the architecture string (DARWIN, DARWIN64, LINUX, LINUX64, WIN32, WIN64)"""
+    """Get the architecture string (DARWIN, DARWIN64, LINUX, LINUX64, WIN32,
+    WIN64)
+    """
     arch_dct = {
         'darwin': 'DARWIN',
         'linux2': 'LINUX',
-        'win32': 'WIN32',
+        'win32': 'WIN',
         }
-    return arch_dct[sys.platform]
+    bits = struct.calcsize("P") * 8
+    if bits == 32:
+        if sys.platform == 'win32':
+            return 'WIN32'
+        else:
+            return arch_dct[sys.platform]
+    else: # assume 64 bit
+        return arch_dct[sys.platform]+'64'
     
     
 def _get_cas_rev(cas_root):
@@ -92,14 +102,14 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(-1)
     elif not isdir(cas_root):
-        print "OpenCASCADE directory doesn't exist\n"
+        print "OpenCASCADE directory %s doesn't exist\n" % cas_root
         sys.exit(-1)
     if esp_dir is None:
         print "Engineering Sketchpad directory must be supplied\n"
         parser.print_help()
         sys.exit(-1)
     elif not isdir(esp_dir):
-        print "Engineering Sketchpad directory doesn't exist\n"
+        print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
         sys.exit(-1)
         
     cas_lib = join(cas_root, 'lib')
@@ -111,7 +121,7 @@ if __name__ == '__main__':
         print "Can't determine OpenCASCADE revision\n"
         sys.exit(-1)
 
-    lib_path_tup = _get_dlibpath()
+    lib_path_tup = _get_dlibpath(egads_lib, cas_lib)
     arch = _get_arch()
     
     env = {
@@ -132,9 +142,9 @@ if __name__ == '__main__':
         env['MACOSX'] = '.'.join(platform.mac_ver()[0].split('.')[0:2])
         
 
-    # TODO: don't think this is necessary. may just need LD_LIBRARY_PATH or equivalent
-    # create files to allow users to set their environment later when
-    # using pyrite
+    # TODO: don't think this is necessary. may just need LD_LIBRARY_PATH or
+    # equivalent create files to allow users to set their environment later
+    # when using pyrite
     shfile = open('genEnv.sh', 'w')
     cshfile = open('genEnv.csh', 'w')
     try:
