@@ -30,7 +30,7 @@ print '\nMaking "gem.so" for "%s" (on %s)\n' % (gem_type, gem_arch)
 gem_include_dirs       = ['../include', numpy_include]
 
 if gem_arch.startswith('DARWIN'):
-    lib_ext = ".dylib"
+    lib_stuff = ["lib/*.dylib"]
     if gem_arch == "DARWIN64":
         os.environ['ARCHFLAGS'] = '-arch x86_64'
     else:
@@ -70,7 +70,7 @@ if gem_arch.startswith('DARWIN'):
         gem_libraries.append('pthread')
         gem_extra_link_args.append('-framework IOKit -framework CoreFoundation')
 elif gem_arch == 'LINUX64':
-    lib_ext = ".so"
+    lib_stuff = ["lib/*.so", "lib/*.so.*"]
     gem_extra_compile_args = []
     if gem_type == 'quartz':
         gem_library_dirs       = [gemlib,
@@ -104,7 +104,7 @@ elif gem_arch == 'LINUX64':
         gem_libraries.append('Xext')
         gem_libraries.append('pthread')
 elif gem_arch == 'WIN32':
-    lib_ext = ".dll"
+    lib_stuff = [".dll"]
     gem_extra_compile_args = []
     gem_extra_link_args    = []
     if gem_type == 'quartz':
@@ -134,7 +134,7 @@ elif gem_arch == 'WIN32':
         gem_libraries.append('User32')
         gem_libraries.append('GDI32')
 elif gem_arch == 'WIN64':
-    lib_ext = ".dll"
+    lib_stuff = [".dll"]
     gem_extra_compile_args = ['-DLONGLONG']
     gem_extra_link_args    = []
     if gem_type == 'quartz':
@@ -194,9 +194,8 @@ setup (name = 'pyrite',
        zip_safe = False,
        ext_modules = [module1],
        packages = ['pyrite'],
-       package_data = { 'pyrite': [
-           'test/*.py', 'test/*.csm', 'test/*.col','lib/*%s' % lib_ext
-          ]
+       package_data = { 'pyrite': ['test/*.py', 'test/*.csm', 'test/*.col']+
+                        lib_stuff
        },
       ) 
 

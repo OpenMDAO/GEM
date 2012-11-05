@@ -9,12 +9,6 @@ import StringIO
 import fnmatch
 import struct
 
-libext = {
-    'darwin': 'dylib',
-    'linux2': 'so',
-    'win32': 'dll',
-}
-
 def expand_path(path):
     if path is not None:
         return abspath(expandvars(expanduser(path)))
@@ -184,14 +178,6 @@ if __name__ == '__main__':
     for libpath in _get_occ_libs(cas_lib):
         shutil.copy(libpath, join(pyrite_libdir, basename(libpath)))
     
-    ## create MANIFEST.in?
-    #manif = open(join(dirname(pyrite_libdir), 'MANIFEST.in'), 'w')
-    #try:
-        #manif.write("recursive-include lib *.%s\n" % libext[sys.platform])
-        #manif.write("recursive-include test *\n")
-    #finally:
-        #manif.close()
-
     # run setup.py
     if options.bdist_egg:
         ret = subprocess.call("python setup.py bdist_egg", 
