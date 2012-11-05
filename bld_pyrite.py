@@ -149,11 +149,17 @@ if __name__ == '__main__':
     os.environ.update(env)
     
     esp_src = join(esp_dir,'src')
+    srcdirs = [esp_src, 
+               join(env['GEM_BLOC'], 'src'), 
+               join(env['GEM_BLOC'], 'diamond')]
+    
     if options.clean:
-        ret = subprocess.call('make clean', shell=True, env=os.environ, 
-                              cwd=esp_src)
-    ret = subprocess.call('make', shell=True, env=os.environ, 
-                          cwd=esp_src)
+        for srcdir in srcdirs:
+            ret = subprocess.call('make clean', shell=True, env=os.environ, 
+                                  cwd=srcdir)
+    for srcdir in srcdirs:
+        ret = subprocess.call('make', shell=True, env=os.environ, 
+                              cwd=srcdir)
     
     pyrite_libdir = join(dirname(abspath(__file__)), 'pyrite', 'pyrite', 'lib')
     if not isdir(pyrite_libdir):

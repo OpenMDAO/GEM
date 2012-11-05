@@ -194,7 +194,10 @@ setup (name = 'pyrite',
        zip_safe = False,
        ext_modules = [module1],
        packages = ['pyrite'],
-       package_data = { 'pyrite': ['test/*.py', 'lib/*%s' % lib_ext]},
+       package_data = { 'pyrite': [
+           'test/*.py', 'test/*.csm', 'test/*.col','lib/*%s' % lib_ext
+          ]
+       },
       ) 
 
 
