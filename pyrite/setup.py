@@ -69,8 +69,8 @@ if gem_arch.startswith('DARWIN'):
         gem_libraries.append('Xext')
         gem_libraries.append('pthread')
         gem_extra_link_args.append('-framework IOKit -framework CoreFoundation')
-elif gem_arch == 'LINUX64':
-    lib_stuff = ["lib/*.so", "lib/*.so.*"]
+elif gem_arch.startswith('LINUX'):
+    lib_stuff = ["lib/*.so.0"]
     gem_extra_compile_args = []
     if gem_type == 'quartz':
         gem_library_dirs       = [gemlib,

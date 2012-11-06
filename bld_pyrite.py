@@ -9,6 +9,14 @@ import StringIO
 import fnmatch
 import struct
 
+def copy(src, dst):
+    """copy symlinks if present"""
+    if (not sys.platform.startswith('win')) and os.path.islink(src):
+        linkto = os.readlink(src)
+        os.symlink(linkto, dst)
+    else:
+        shutil.copy(src, dst)
+
 def expand_path(path):
     if path is not None:
         return abspath(expandvars(expanduser(path)))
@@ -61,6 +69,7 @@ def _get_cas_rev(cas_root):
 def _get_occ_libs(libpath):
     if sys.platform.startswith('linux'):
         libs = fnmatch.filter(os.listdir(libpath), "*.so")
+        libs.extend(fnmatch.filter(os.listdir(libpath), "*.so.*"))
     elif sys.platform == 'darwin':
         libs = fnmatch.filter(os.listdir(libpath), "*.dylib")
     elif sys.platform.startswith("win"):
@@ -172,11 +181,11 @@ if __name__ == '__main__':
     esp_libs = join(esp_dir, 'lib')
     # collect egads, opencsm libs
     for name in os.listdir(esp_libs):
-        shutil.copy(join(esp_libs, name), join(pyrite_libdir, name))
+        copy(join(esp_libs, name), join(pyrite_libdir, name))
     
     # collect OCC libs
     for libpath in _get_occ_libs(cas_lib):
-        shutil.copy(libpath, join(pyrite_libdir, basename(libpath)))
+        copy(libpath, join(pyrite_libdir, basename(libpath)))
     
     # run setup.py
     if options.bdist_egg:
