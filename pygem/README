@@ -1,7 +1,7 @@
 To make the "gem" module
 ========================
 
-cd Projects/GEM/pyrite
+cd Projects/GEM/pygem
 
 setenv GEM_ARCH DARWIN       (-or- DARWIN64 -or- LINUX64 -or- WIN32 -or- WIN64)
 setenv GEM_TYPE diamond      (-or- quartz)

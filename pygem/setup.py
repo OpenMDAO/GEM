@@ -16,6 +16,8 @@ gem_arch = os.environ['GEM_ARCH']
 # GEM_TYPE can be set to "diamond" (the default) or "quartz"
 gem_type = os.environ.get('GEM_TYPE', 'diamond')
 
+pkg_name = 'pygem_' + gem_type
+
 # These environment variables are usually set for GEM builds:
 gemlib = os.path.join(os.environ['GEM_BLOC'], 'lib')
 
@@ -70,7 +72,7 @@ if gem_arch.startswith('DARWIN'):
         gem_libraries.append('pthread')
         gem_extra_link_args.append('-framework IOKit -framework CoreFoundation')
 elif gem_arch.startswith('LINUX'):
-    lib_stuff = ["lib/*.so.0"]
+    lib_stuff = ["lib/*.so", "lib/*.so.*"]
     gem_extra_compile_args = []
     if gem_type == 'quartz':
         gem_library_dirs       = [gemlib,
@@ -171,14 +173,14 @@ elif gem_arch == 'WIN64':
 #    'extra_objects', 'extra_compile_args', 'extra_link_args',
 #    'swig_opts', 'export_symbols', 'depends', 'language'
 
-module1 = Extension('gem',
+module1 = Extension(pkg_name+'.gem',
                     include_dirs       = gem_include_dirs,
                     extra_compile_args = gem_extra_compile_args,
                     library_dirs       = gem_library_dirs,
                     libraries          = gem_libraries,
                     extra_link_args    = gem_extra_link_args,
                     language           = 'c',
-                    sources            = ['pyrite/pyrite.c'])
+                    sources            = ['pygem/pygem.c'])
 
 # Legal keyword arguments for the setup() function
 #    'distclass', 'script_name', 'script_args', 'options',
@@ -188,13 +190,13 @@ module1 = Extension('gem',
 #    'platforms', 'classifiers', 'download_url',
 #    'requires', 'provides', 'obsoletes'
 
-setup (name = 'pyrite',
+setup (name = pkg_name,
        version = '0.90',
        description = 'Python interface to GEM',
        zip_safe = False,
        ext_modules = [module1],
-       packages = ['pyrite'],
-       package_data = { 'pyrite': ['test/*.py', 'test/*.csm', 'test/*.col']+
+       packages = [pkg_name],
+       package_data = { pkg_name: ['test/*.py', 'test/*.csm', 'test/*.col']+
                         lib_stuff
        },
       ) 

@@ -2,12 +2,12 @@
 
 import os
 import unittest
-import gem
+from pygem_diamond import gem
 import numpy
 
 sample_file = os.path.join(os.path.dirname(__file__), "sample.csm")
 
-class PyRiteTestCase(unittest.TestCase):
+class PygemTestCase(unittest.TestCase):
 
     def setUp(self):
         pass

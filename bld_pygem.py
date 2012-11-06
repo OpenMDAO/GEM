@@ -88,11 +88,11 @@ if __name__ == '__main__':
     parser.add_argument("-c", "--clean", action="store_true", dest="clean",
                         help="do a make clean before building")
     parser.add_argument("--install", action="store_true", dest="install",
-                        help="install pyrite")
+                        help="install pygem")
     parser.add_argument("--bdist_egg", action="store_true", dest="bdist_egg",
-                        help="build a binary egg for pyrite")
+                        help="build a binary egg for pygem")
     parser.add_argument("--sdist", action="store_true", dest="sdist",
-                        help="build a source distribution for pyrite")
+                        help="build a source distribution for pygem")
    
     options = parser.parse_args()
     
@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
     # TODO: don't think this is necessary. may just need LD_LIBRARY_PATH or
     # equivalent create files to allow users to set their environment later
-    # when using pyrite
+    # when using pygem
     shfile = open('genEnv.sh', 'w')
     cshfile = open('genEnv.csh', 'w')
     try:
@@ -174,27 +174,28 @@ if __name__ == '__main__':
         ret = subprocess.call('make', shell=True, env=os.environ, 
                               cwd=srcdir)
     
-    pyrite_libdir = join(dirname(abspath(__file__)), 'pyrite', 'pyrite', 'lib')
-    if not isdir(pyrite_libdir):
-        os.mkdir(pyrite_libdir)
+    pygem_libdir = join(dirname(abspath(__file__)), 'pygem', 'pygem', 'lib')
+    if isdir(pygem_libdir):
+        shutil.rmtree(pygem_libdir)
+    os.mkdir(pygem_libdir)
     
     esp_libs = join(esp_dir, 'lib')
     # collect egads, opencsm libs
     for name in os.listdir(esp_libs):
-        copy(join(esp_libs, name), join(pyrite_libdir, name))
+        copy(join(esp_libs, name), join(pygem_libdir, name))
     
     # collect OCC libs
     for libpath in _get_occ_libs(cas_lib):
-        copy(libpath, join(pyrite_libdir, basename(libpath)))
+        copy(libpath, join(pygem_libdir, basename(libpath)))
     
     # run setup.py
     if options.bdist_egg:
         ret = subprocess.call("python setup.py bdist_egg", 
                               shell=True, env=os.environ, 
-                              cwd=dirname(dirname(pyrite_libdir)))
+                              cwd=dirname(dirname(pygem_libdir)))
     if options.sdist:
         ret = subprocess.call("python setup.py sdist", 
                               shell=True, env=os.environ, 
-                              cwd=dirname(dirname(pyrite_libdir)))
+                              cwd=dirname(dirname(pygem_libdir)))
 
   

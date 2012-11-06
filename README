@@ -16,7 +16,7 @@ cd ../test
       make -f $f
    end
 
-cd ../pyrite
+cd ../pygem
    make clean
    make
 

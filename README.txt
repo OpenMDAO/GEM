@@ -17,7 +17,7 @@ README.txt - this file
 diamond    - source files for building the GEM/OpenCSM/EGADS libraries
 docs       - documentation 
 include    - headers used by GEM and those used to build GEM apps
-pyrite     - source files used to interface GEM with Python
+pygem     - source files used to interface GEM with Python
 quartz     - source files for building the GEM/CAPRI libraries
 src        - general source files
 test       - test and example code
@@ -96,7 +96,7 @@ can be simply done by: "make -f XYZ.make" (or "nmake -f XYZ.mak" at a
 command prompt under Windows). Where XYZ is the name of any of the 
 test/example codes.
 
-2.4 Python access through pyrite
+2.4 Python access through pygem
 
 
 2.5 GV, Windows & Visual Studio

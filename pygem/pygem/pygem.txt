@@ -4,7 +4,7 @@ NAME
     gem
 
 FILE
-    /Users/dannenho/Projects/GEM/pyrite/test/gem.so
+    /Users/dannenho/Projects/GEM/pygem/test/gem.so
 
 FUNCTIONS
     add2Model(...)
