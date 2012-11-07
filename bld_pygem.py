@@ -93,7 +93,9 @@ if __name__ == '__main__':
                         help="build a binary egg for pygem")
     parser.add_argument("--sdist", action="store_true", dest="sdist",
                         help="build a source distribution for pygem")
-   
+    parser.add_argument("--gemtype", action="store", type=str,
+                        dest='gem_type', help="GEM type (diamond or quartz)")
+  
     options = parser.parse_args()
     
     cas_rev = options.casrev
@@ -114,6 +116,9 @@ if __name__ == '__main__':
     elif not isdir(esp_dir):
         print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
         sys.exit(-1)
+    elif not options.gem_type:
+        print 'You must specify a GEM type (diamond or quartz)'
+        sys.exit(-1)
         
     cas_lib = join(cas_root, 'lib')
     egads_lib = join(esp_dir, 'lib')
@@ -129,8 +134,9 @@ if __name__ == '__main__':
     
     env = {
         'GEM_ARCH': arch,
-        'GEM_TYPE': 'diamond',
+        'GEM_TYPE': options.gem_type,
         'GEM_BLOC': dirname(abspath(__file__)),
+        'GEM_TYPE': options.gem_type,
         'OCSM_SRC': join(esp_dir, 'src', 'OpenCSM'),
         'EGADSINC': join(esp_dir, 'src', 'EGADS', 'include'),
         'EGADSLIB': egads_lib,
@@ -144,28 +150,28 @@ if __name__ == '__main__':
     if sys.platform == 'darwin':
         env['MACOSX'] = '.'.join(platform.mac_ver()[0].split('.')[0:2])
         
-
-    # TODO: don't think this is necessary. may just need LD_LIBRARY_PATH or
-    # equivalent create files to allow users to set their environment later
-    # when using pygem
-    shfile = open('genEnv.sh', 'w')
-    cshfile = open('genEnv.csh', 'w')
-    try:
-        for name, val in env.items():
-            shfile.write('export %s=%s\n' % (name, val))
-            cshfile.write('setenv %s %s\n' % (name, val))
-    finally:
-        shfile.close()
-        cshfile.close()
+    # # TODO: don't think this is necessary. may just need LD_LIBRARY_PATH or
+    # # equivalent create files to allow users to set their environment later
+    # # when using pygem
+    # shfile = open('genEnv.sh', 'w')
+    # cshfile = open('genEnv.csh', 'w')
+    # try:
+    #     for name, val in env.items():
+    #         shfile.write('export %s=%s\n' % (name, val))
+    #         cshfile.write('setenv %s %s\n' % (name, val))
+    # finally:
+    #     shfile.close()
+    #     cshfile.close()
         
     # update the current environment
     os.environ.update(env)
     
     esp_src = join(esp_dir,'src')
     srcdirs = [esp_src, 
-               join(env['GEM_BLOC'], 'src'), 
-               join(env['GEM_BLOC'], 'diamond')]
-    
+               join(env['GEM_BLOC'], 'src'),
+               join(env['GEM_BLOC'], options.gem_type)]
+    gem_dirs = []
+ 
     if options.clean:
         for srcdir in srcdirs:
             ret = subprocess.call('make clean', shell=True, env=os.environ, 
@@ -173,8 +179,9 @@ if __name__ == '__main__':
     for srcdir in srcdirs:
         ret = subprocess.call('make', shell=True, env=os.environ, 
                               cwd=srcdir)
-    
-    pygem_libdir = join(dirname(abspath(__file__)), 'pygem', 'pygem', 'lib')
+   
+    pkg_name = 'pygem_'+options.gem_type
+    pygem_libdir = join(dirname(abspath(__file__)), pkg_name, pkg_name, 'lib')
     if isdir(pygem_libdir):
         shutil.rmtree(pygem_libdir)
     os.mkdir(pygem_libdir)
