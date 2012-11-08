@@ -10,7 +10,7 @@ except ImportError:
     print 'numpy was not found.  Aborting build'
     sys.exit(-1)
 
-# GEM_ARCH must be one of "DARWIN", "DARWIN64", LINUX64", "WIN32", or "WIN64"
+# GEM_ARCH must be one of "DARWIN", "DARWIN64", "LINUX", "LINUX64", "WIN32", or "WIN64"
 gem_arch = os.environ['GEM_ARCH']
 gem_type = 'diamond'
 pkg_name = 'pygem_diamond'
@@ -82,7 +82,7 @@ module1 = Extension(pkg_name+'.gem',
                     libraries          = gem_libraries,
                     extra_link_args    = gem_extra_link_args,
                     language           = 'c',
-                    sources            = ['pygem/pygem.c'])
+                    sources            = ['pygem_diamond/pygem.c'])
 
 # Legal keyword arguments for the setup() function
 #    'distclass', 'script_name', 'script_args', 'options',
