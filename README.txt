@@ -13,14 +13,15 @@ Bob Haimes.
 
 1.1 GEM Source Distribution Layout
 
-README.txt - this file
-diamond    - source files for building the GEM/OpenCSM/EGADS libraries
-docs       - documentation 
-include    - headers used by GEM and those used to build GEM apps
-pygem     - source files used to interface GEM with Python
-quartz     - source files for building the GEM/CAPRI libraries
-src        - general source files
-test       - test and example code
+README.txt    - this file
+diamond       - source files for building the GEM/OpenCSM/EGADS libraries
+docs          - documentation 
+include       - headers used by GEM and those used to build GEM apps
+pygem_diamond - source files used to interface GEM/OpenCSM/EGADS with Python
+pygem_quartz  - source files used to interface GEM/CAPRI with Python
+quartz        - source files for building the GEM/CAPRI libraries
+src           - general source files
+test          - test and example code
 
 1.2 GEM & EGADS Binary Distribution
 

@@ -81,7 +81,7 @@ module1 = Extension(pkg_name+'.gem',
                     libraries          = gem_libraries,
                     extra_link_args    = gem_extra_link_args,
                     language           = 'c',
-                    sources            = ['pygem/pygem.c'])
+                    sources            = ['pygem_quartz/pygem.c'])
 
 # Legal keyword arguments for the setup() function
 #    'distclass', 'script_name', 'script_args', 'options',
@@ -93,7 +93,7 @@ module1 = Extension(pkg_name+'.gem',
 
 setup (name = pkg_name,
        version = '0.90',
-       description = 'Python interface to GEM',
+       description = 'Python interface to GEM using OpenCSM and Capri',
        zip_safe = False,
        ext_modules = [module1],
        packages = [pkg_name],

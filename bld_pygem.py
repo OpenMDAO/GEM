@@ -21,7 +21,7 @@ def expand_path(path):
     if path is not None:
         return abspath(expandvars(expanduser(path)))
 
-def _get_dlibpath(egads_lib, cas_lib):
+def _get_dlibpath(libs):
     _lib_path_dct = {
         'darwin': 'DYLD_LIBRARY_PATH',
         'win32': 'PATH',
@@ -31,10 +31,9 @@ def _get_dlibpath(egads_lib, cas_lib):
     if path is None:
         path = ''
     parts = path.split(os.pathsep)
-    if egads_lib not in parts:
-        parts = [egads_lib]+parts
-    if cas_lib not in parts:
-        parts = [cas_lib]+parts
+    for lib in libs:
+        if lib not in parts:
+            parts = [lib]+parts
     return (pname, os.pathsep.join(parts))
 
 def _get_arch():
@@ -83,6 +82,10 @@ if __name__ == '__main__':
                         dest='esp_dir', help="Engineering Sketchpad directory")
     parser.add_argument("--casroot", action="store", type=str,
                         dest='casroot', help="OpenCASCADE root directory")
+    parser.add_argument("--caprilib", action="store", type=str,
+                        dest='caprilib', help="Capri lib directory (used with gemtype=quartz)")
+    parser.add_argument("--capriinc", action="store", type=str,
+                        dest='capriinc', help="Capri include directory (used with gemtype=quartz)")
     parser.add_argument("--casrev", action="store", type=str,
                         dest='casrev', help="OpenCASCADE revision number")
     parser.add_argument("-c", "--clean", action="store_true", dest="clean",
@@ -101,35 +104,47 @@ if __name__ == '__main__':
     cas_rev = options.casrev
     cas_root = expand_path(options.casroot)
     esp_dir = expand_path(options.esp_dir)
+    esp_src = join(esp_dir,'src')
+    esp_libs = join(esp_dir, 'lib')
     
-    if cas_root is None:
-        print "OpenCASCADE directory must be supplied\n"
-        parser.print_help()
-        sys.exit(-1)
-    elif not isdir(cas_root):
-        print "OpenCASCADE directory %s doesn't exist\n" % cas_root
-        sys.exit(-1)
-    if esp_dir is None:
-        print "Engineering Sketchpad directory must be supplied\n"
-        parser.print_help()
-        sys.exit(-1)
-    elif not isdir(esp_dir):
-        print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
-        sys.exit(-1)
-    elif not options.gem_type:
+    capri = options.caprilib or options.capriinc
+    
+    if not capri:
+        if cas_root is None:
+            print "OpenCASCADE directory must be supplied\n"
+            parser.print_help()
+            sys.exit(-1)
+        elif not isdir(cas_root):
+            print "OpenCASCADE directory %s doesn't exist\n" % cas_root
+            sys.exit(-1)
+            
+        if esp_dir is None:
+            print "Engineering Sketchpad directory must be supplied\n"
+            parser.print_help()
+            sys.exit(-1)
+        elif not isdir(esp_dir):
+            print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
+            sys.exit(-1)
+            
+    if not options.gem_type:
         print 'You must specify a GEM type (diamond or quartz)'
         sys.exit(-1)
+    
+    if options.gem_type == 'diamond':
+        cas_lib = join(cas_root, 'lib')
+        egads_lib = join(esp_dir, 'lib')
+        if cas_rev is None:
+            cas_rev = _get_cas_rev(cas_root)
+            
+        if cas_rev is None:
+            print "Can't determine OpenCASCADE revision\n"
+            sys.exit(-1)
+    
+        libs = [egads_lib, cas_lib]
+    elif options.gem_type == 'quartz':
+        libs = [options.caprilib]
         
-    cas_lib = join(cas_root, 'lib')
-    egads_lib = join(esp_dir, 'lib')
-    if cas_rev is None:
-        cas_rev = _get_cas_rev(cas_root)
-        
-    if cas_rev is None:
-        print "Can't determine OpenCASCADE revision\n"
-        sys.exit(-1)
-
-    lib_path_tup = _get_dlibpath(egads_lib, cas_lib)
+    lib_path_tup = _get_dlibpath(libs)
     arch = _get_arch()
     
     env = {
@@ -137,45 +152,48 @@ if __name__ == '__main__':
         'GEM_TYPE': options.gem_type,
         'GEM_BLOC': dirname(abspath(__file__)),
         'GEM_TYPE': options.gem_type,
-        'OCSM_SRC': join(esp_dir, 'src', 'OpenCSM'),
-        'EGADSINC': join(esp_dir, 'src', 'EGADS', 'include'),
-        'EGADSLIB': egads_lib,
-        'CASROOT': cas_root,
-        'CASREV': cas_rev,
-        'CASARCH': arch[0]+arch[1:].lower(),
         'GEM_ROOT': esp_dir,
         lib_path_tup[0]: lib_path_tup[1],
-        }
+    }
     
     if sys.platform == 'darwin':
         env['MACOSX'] = '.'.join(platform.mac_ver()[0].split('.')[0:2])
         
+    if options.gem_type == 'diamond':
+        env.update({
+            'OCSM_SRC': join(esp_dir, 'src', 'OpenCSM'),
+            'EGADSINC': join(esp_dir, 'src', 'EGADS', 'include'),
+            'EGADSLIB': egads_lib,
+            'CASROOT': cas_root,
+            'CASREV': cas_rev,
+            'CASARCH': arch[0]+arch[1:].lower(),
+        })
+    elif options.gem_type == 'quartz':
+        env['CAPRILIB'] = options.caprilib
+        env['CAPRIINC'] = options.capriinc
+        
     if options.gv:
         env['GEM_GRAPHICS'] = 'gv'
-       
-    ## We could generate bash and csh files here to set the env variables
-    ## for building, but since we can build directly from this script, we
-    ## don't really need to.  All we need to use the pygem distribution later
-    ## is to make sure that LD_LIBRARY_PATH (or equivalent) is set, and that
-    ## is taken care of for us if the 'plugin install' command is used.
-    # shfile = open('genEnv.sh', 'w')
-    # cshfile = open('genEnv.csh', 'w')
-    # try:
-    #     for name, val in env.items():
-    #         shfile.write('export %s=%s\n' % (name, val))
-    #         cshfile.write('setenv %s %s\n' % (name, val))
-    # finally:
-    #     shfile.close()
-    #     cshfile.close()
+    
+    # generate some shell scripts here to set up the environment for those
+    # that want to do things by running make directly
+    shfile = open('gemEnv.sh', 'w')
+    cshfile = open('gemEnv.csh', 'w')
+    try:
+        for name, val in env.items():
+            shfile.write('export %s=%s\n' % (name, val))
+            cshfile.write('setenv %s %s\n' % (name, val))
+    finally:
+        shfile.close()
+        cshfile.close()
         
     # update the current environment
     os.environ.update(env)
     
-    esp_src = join(esp_dir,'src')
+    # we'll do a make in these directories
     srcdirs = [esp_src, 
                join(env['GEM_BLOC'], 'src'),
                join(env['GEM_BLOC'], options.gem_type)]
-    gem_dirs = []
  
     if options.clean:
         for srcdir in srcdirs:
@@ -186,25 +204,29 @@ if __name__ == '__main__':
                               cwd=srcdir)
    
     pkg_name = 'pygem_'+options.gem_type
+    
+    # make a lib dir inside of our package where we can put all of
+    # the libraries that we'll include in the binary distribution
     pygem_libdir = join(dirname(abspath(__file__)), pkg_name, pkg_name, 'lib')
     if isdir(pygem_libdir):
         shutil.rmtree(pygem_libdir)
     os.mkdir(pygem_libdir)
     
-    esp_libs = join(esp_dir, 'lib')
-    # collect egads, opencsm libs
+    # collect EngSketchPad libs (egads, opencsm, ...)
     for name in os.listdir(esp_libs):
         copy(join(esp_libs, name), join(pygem_libdir, name))
     
-    # collect OCC libs
+    # collect opencascade libs
     for libpath in _get_occ_libs(cas_lib):
         copy(libpath, join(pygem_libdir, basename(libpath)))
     
-    # run setup.py
+    # build a binary egg distribution
     if options.bdist_egg:
         ret = subprocess.call("python setup.py bdist_egg", 
                               shell=True, env=os.environ, 
                               cwd=dirname(dirname(pygem_libdir)))
+        
+    # build a source distribution
     if options.sdist:
         ret = subprocess.call("python setup.py sdist", 
                               shell=True, env=os.environ, 

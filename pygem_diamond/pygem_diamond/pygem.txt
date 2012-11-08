@@ -3,9 +3,6 @@ Help on module gem:
 NAME
     gem
 
-FILE
-    /Users/dannenho/Projects/GEM/pygem/test/gem.so
-
 FUNCTIONS
     add2Model(...)
         Add a BRep to a static Model
