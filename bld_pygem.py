@@ -119,6 +119,8 @@ if __name__ == '__main__':
             
         cas_rev = options.casrev
         cas_root = expand_path(options.casroot)
+        if sys.platform.startswith('win'):
+            cas_root = join(cas_root, 'ros')
         esp_dir = expand_path(options.esp_dir)
         esp_src = join(esp_dir,'src')
         esp_libs = join(esp_dir, 'lib')
@@ -131,7 +133,11 @@ if __name__ == '__main__':
             print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
             sys.exit(-1)
             
-        cas_lib = join(cas_root, 'lib')
+        if sys.platform.startswith('win'):
+            # TODO: make the determination of cas_lib on windows more robust
+            cas_lib = join(cas_root, 'win32', 'vc8', 'lib')
+        else:
+            cas_lib = join(cas_root, 'lib')
         egads_lib = join(esp_dir, 'lib')
         if cas_rev is None:
             cas_rev = _get_cas_rev(cas_root)
@@ -168,6 +174,8 @@ if __name__ == '__main__':
             'CASREV': cas_rev,
             'CASARCH': arch[0]+arch[1:].lower(),
         })
+        if sys.platform.startswith('win'):
+            env['CASARCH'] = env['CASARCH']+'/vc8'
     elif options.gem_type == 'quartz':
         env['CAPRILIB'] = options.caprilib
         env['CAPRIINC'] = options.capriinc
