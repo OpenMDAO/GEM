@@ -99,6 +99,20 @@ test/example codes.
 
 2.4 Python access through pygem
 
+	The bld_pygem.py program can be used to create binary distributions
+for pygem_diamond and pygem_quartz.  These distributions can then be installed
+by a user into their python environment.  The command line options for bld_pygem.py
+can be seen by running
+
+   python bld_pygem.py --help
+   
+Running bld_pygem.py will make all of the necessary dependent libraries by default.
+It the --bdist_egg option is passed to it, it will also create a binary egg distribution
+for the specified gem type (diamond or quartz) in the dist directory under the 
+pygem_<gem_type> directory.  This binary egg can be installed into an OpenMDAO 
+environment by running 'plugin install <egg_pathname>' from an active OpenMDAO 
+environment.
+
 
 2.5 GV, Windows & Visual Studio
 
@@ -135,4 +149,9 @@ For an OSX install it could be:
 
   % export DYLD_LIBRARY_PATH="$EGADSLIB":"$CAPRILIB":$DYLD_LIBRARY_PATH   -or-
   % setenv DYLD_LIBRARY_PATH "$EGADSLIB":"$CAPRILIB":$DYLD_LIBRARY_PATH
+  
+Note that if running in an OpenMDAO environment where the pygem distribution was
+installed using 'plugin install', the appropriate library path will be set
+automatically when the environment is activated.
+
 
