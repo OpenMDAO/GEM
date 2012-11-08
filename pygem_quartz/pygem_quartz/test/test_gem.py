@@ -2,7 +2,7 @@
 
 import os
 import unittest
-from pygem_diamond import gem
+from pygem_quartz import gem
 import numpy
 
 sample_file = os.path.join(os.path.dirname(__file__), "sample.csm")

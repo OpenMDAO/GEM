@@ -20,11 +20,15 @@ To use the "gem" extension interactively
 ========================================
 
 python
-   from pygem_diamond import gem
+>>>from pygem_diamond import gem
+
+... do stuff
+
+Ctrl-d to exit the interpreter when finished
 
 
-To run the "gem" module in batch mode
-=====================================
+To test the "gem" module in batch mode
+======================================
 
 cd test
    python test_gem.py

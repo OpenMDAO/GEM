@@ -1,7 +1,7 @@
 # this is a simple python file that demonstrates the use of the "gem" module
 import os
 import numpy
-import gem
+from pygem_quartz import gem
 help(gem)
 
 # allow printing of only parts of ndarrays

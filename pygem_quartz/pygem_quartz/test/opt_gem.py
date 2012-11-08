@@ -1,7 +1,7 @@
 # this is a simple python file that demonstrates optimization using the "gem" module
 
 import numpy
-import gem
+from pygem_quartz import gem
 
 # allow printing of entire arrays
 numpy.set_printoptions(threshold=100)
