@@ -101,15 +101,19 @@ if __name__ == '__main__':
   
     options = parser.parse_args()
     
-    cas_rev = options.casrev
-    cas_root = expand_path(options.casroot)
-    esp_dir = expand_path(options.esp_dir)
-    esp_src = join(esp_dir,'src')
-    esp_libs = join(esp_dir, 'lib')
+    if not options.gem_type:
+        print 'You must specify a GEM type (diamond or quartz)'
+        sys.exit(-1)
     
     capri = options.caprilib or options.capriinc
     
-    if not capri:
+    if options.gem_type == 'diamond':
+        cas_rev = options.casrev
+        cas_root = expand_path(options.casroot)
+        esp_dir = expand_path(options.esp_dir)
+        esp_src = join(esp_dir,'src')
+        esp_libs = join(esp_dir, 'lib')
+        
         if cas_root is None:
             print "OpenCASCADE directory must be supplied\n"
             parser.print_help()
@@ -126,11 +130,6 @@ if __name__ == '__main__':
             print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
             sys.exit(-1)
             
-    if not options.gem_type:
-        print 'You must specify a GEM type (diamond or quartz)'
-        sys.exit(-1)
-    
-    if options.gem_type == 'diamond':
         cas_lib = join(cas_root, 'lib')
         egads_lib = join(esp_dir, 'lib')
         if cas_rev is None:
