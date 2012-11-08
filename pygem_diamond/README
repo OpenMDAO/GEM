@@ -1,22 +1,27 @@
-To make the "gem" module
-========================
+pygem_diamond is a python wrapper of the gem API using diamond (OpenCSM and EGADS)
+underneath.
 
-cd Projects/GEM/pygem
+To build a pygem_diamond binary egg:
+cd to the GEM directory (parent dir of pygem_diamond)
+python bld_pygem.py --gemtype=diamond --casroot=<dir containing opencascade> --esp=<dir containing EngSketchPad> --clean --bdist_egg
 
-setenv GEM_ARCH DARWIN       (-or- DARWIN64 -or- LINUX64 -or- WIN32 -or- WIN64)
-setenv GEM_TYPE diamond      (-or- quartz)
-setenv GEM_GRAPHICS gv
 
-make
+Other options to bld_pygem.py include --gv to link in the gv viewer.
 
-To run the "gem" module interactively
-=====================================
+NOTE: When installing into an OpenMDAO environment, make sure to use the
+'plugin install' command to install the egg, because it will automatically
+update the activate script to add any necessary entries to LD_LIBRARY_PATH
+(or equivalent) for you.  Otherwise you'll have to update LD_LIBRARY_PATH
+yourself.
 
-cd test
-   python
-      import gem
 
-      Ctrl-D        (to exit python interpreter)
+To use the "gem" extension interactively 
+(after you've installed the pygem_diamond distribution)
+========================================
+
+python
+   from pygem_diamond import gem
+
 
 To run the "gem" module in batch mode
 =====================================

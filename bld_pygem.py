@@ -87,12 +87,12 @@ if __name__ == '__main__':
                         dest='casrev', help="OpenCASCADE revision number")
     parser.add_argument("-c", "--clean", action="store_true", dest="clean",
                         help="do a make clean before building")
-    parser.add_argument("--install", action="store_true", dest="install",
-                        help="install pygem")
     parser.add_argument("--bdist_egg", action="store_true", dest="bdist_egg",
                         help="build a binary egg for pygem")
     parser.add_argument("--sdist", action="store_true", dest="sdist",
                         help="build a source distribution for pygem")
+    parser.add_argument("--gv", action="store_true", dest="gv",
+                        help="link in the gv libraries")
     parser.add_argument("--gemtype", action="store", type=str,
                         dest='gem_type', help="GEM type (diamond or quartz)")
   
@@ -150,9 +150,14 @@ if __name__ == '__main__':
     if sys.platform == 'darwin':
         env['MACOSX'] = '.'.join(platform.mac_ver()[0].split('.')[0:2])
         
-    # # TODO: don't think this is necessary. may just need LD_LIBRARY_PATH or
-    # # equivalent create files to allow users to set their environment later
-    # # when using pygem
+    if options.gv:
+        env['GEM_GRAPHICS'] = 'gv'
+       
+    ## We could generate bash and csh files here to set the env variables
+    ## for building, but since we can build directly from this script, we
+    ## don't really need to.  All we need to use the pygem distribution later
+    ## is to make sure that LD_LIBRARY_PATH (or equivalent) is set, and that
+    ## is taken care of for us if the 'plugin install' command is used.
     # shfile = open('genEnv.sh', 'w')
     # cshfile = open('genEnv.csh', 'w')
     # try:
