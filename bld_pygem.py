@@ -108,25 +108,26 @@ if __name__ == '__main__':
     capri = options.caprilib or options.capriinc
     
     if options.gem_type == 'diamond':
+        if options.casroot is None:
+            print "OpenCASCADE directory must be supplied\n"
+            parser.print_help()
+            sys.exit(-1)
+        if options.esp_dir is None:
+            print "Engineering Sketchpad directory must be supplied\n"
+            parser.print_help()
+            sys.exit(-1)
+            
         cas_rev = options.casrev
         cas_root = expand_path(options.casroot)
         esp_dir = expand_path(options.esp_dir)
         esp_src = join(esp_dir,'src')
         esp_libs = join(esp_dir, 'lib')
         
-        if cas_root is None:
-            print "OpenCASCADE directory must be supplied\n"
-            parser.print_help()
-            sys.exit(-1)
-        elif not isdir(cas_root):
+        if not isdir(cas_root):
             print "OpenCASCADE directory %s doesn't exist\n" % cas_root
             sys.exit(-1)
             
-        if esp_dir is None:
-            print "Engineering Sketchpad directory must be supplied\n"
-            parser.print_help()
-            sys.exit(-1)
-        elif not isdir(esp_dir):
+        if not isdir(esp_dir):
             print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
             sys.exit(-1)
             
