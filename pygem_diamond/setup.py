@@ -24,6 +24,10 @@ egadslib = os.environ['EGADSLIB']
 print '\nMaking "gem.so" for "%s" (on %s)\n' % (gem_type, gem_arch)
 
 gem_include_dirs       = ['../include', numpy_include]
+gem_extra_compile_args = []
+gem_extra_link_args    = []
+gem_libraries          = ['gem', 'diamond', 'egads']
+gem_library_dirs       = [gemlib, egadslib]
 
 if gem_arch.startswith('DARWIN'):
     lib_stuff = ["lib/*.dylib"]
@@ -31,28 +35,14 @@ if gem_arch.startswith('DARWIN'):
         os.environ['ARCHFLAGS'] = '-arch x86_64'
     else:
         os.environ['ARCHFLAGS'] = '-arch i386'
-    gem_extra_compile_args = []
-    gem_library_dirs       = [gemlib, egadslib, '/usr/X11/lib']
-    gem_libraries          = ['gem', 'diamond', 'egads']
-    gem_extra_link_args    = []
+    gem_library_dirs.append('/usr/X11/lib')
 elif gem_arch.startswith('LINUX'):
     lib_stuff = ["lib/*.so", "lib/*.so.*"]
-    gem_extra_compile_args = []
-    gem_library_dirs       = [gemlib, egadslib]
-    gem_libraries          = ['gem', 'diamond', 'egads']
-    gem_extra_link_args    = []
 elif gem_arch == 'WIN32':
-    lib_stuff = [".dll"]
-    gem_extra_compile_args = []
-    gem_extra_link_args    = []
-    gem_library_dirs       = [gemlib, egadslib]
-    gem_libraries          = ['gem', 'diamond', 'egads']
+    lib_stuff = ["lib/*.dll", "lib/*.manifest"]
 elif gem_arch == 'WIN64':
-    lib_stuff = [".dll"]
+    lib_stuff = ["lib/*.dll", "lib/*.manifest"]
     gem_extra_compile_args = ['-DLONGLONG']
-    gem_extra_link_args    = []
-    gem_library_dirs       = [gemlib, egadslib]
-    gem_libraries          = ['gem', 'diamond', 'egads']
 
 
 if (os.environ.get('GEM_GRAPHICS') == "gv"):

@@ -72,6 +72,7 @@ def _get_occ_libs(libpath):
     elif sys.platform == 'darwin':
         libs = fnmatch.filter(os.listdir(libpath), "*.dylib")
     elif sys.platform.startswith("win"):
+        libpath = join(dirname(libpath), 'bin')
         libs = fnmatch.filter(os.listdir(libpath), "*.dll")
     return [join(libpath, lib) for lib in libs]
 
@@ -102,7 +103,8 @@ if __name__ == '__main__':
     options = parser.parse_args()
     
     if not options.gem_type:
-        print 'You must specify a GEM type (diamond or quartz)'
+        print '\nYou must specify a GEM type (diamond or quartz)\n'
+        parser.print_help()
         sys.exit(-1)
     
     capri = options.caprilib or options.capriinc
@@ -221,11 +223,16 @@ if __name__ == '__main__':
     os.mkdir(pygem_libdir)
     
     # collect EngSketchPad libs (egads, opencsm, ...)
+    print 'Copying Engineering Sketchpad libs...'
     for name in os.listdir(esp_libs):
-        copy(join(esp_libs, name), join(pygem_libdir, name))
+        lname = join(esp_libs, name)
+        print lname
+        copy(lname, join(pygem_libdir, name))
     
     # collect opencascade libs
+    print 'Copying OpenCASCADE libs'
     for libpath in _get_occ_libs(cas_lib):
+        print libpath
         copy(libpath, join(pygem_libdir, basename(libpath)))
     
     # build a binary egg distribution
