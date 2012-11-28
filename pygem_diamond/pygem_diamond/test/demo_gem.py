@@ -1,7 +1,7 @@
 # this is a simple python file that demonstrates the use of the "gem" module
-
+import os
 import numpy
-import gem
+from pygem_diamond import gem
 help(gem)
 
 # allow printing of only parts of ndarrays
@@ -30,7 +30,9 @@ aindex = foo[0]                                   ;print ".  aindex      ->", ai
 values = foo[1]                                   ;print ".  values      ->", values
 
 # load the sample OpenCSM Model
-myModel = gem.loadModel(myContext, "sample.csm")  ;print "myModel        ->", myModel
+myModel = gem.loadModel(myContext, 
+                        os.path.join(os.path.dirname(__file__),"sample.csm"))
+print "myModel        ->", myModel
 
 gem.setAttribute(myModel, "MODEL",  0, "s_attr", "model attribute")
 gem.setAttribute(myModel, "MODEL",  0, "i_attrs", (2222222, 3333333, 4444444, 5555555))
