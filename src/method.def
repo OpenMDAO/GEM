@@ -1,0 +1,8 @@
+LIBRARY disMethod
+EXPORTS
+gemFreeQuilt
+gemDefineQuilt
+gemFreeTriangles
+gemTriangulate
+gemInterpolation
+gemIntegration

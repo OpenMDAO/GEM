@@ -12,6 +12,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef WIN32
+#include <windows.h>
+#define DLL HINSTANCE
+#else
+#include <dlfcn.h>
+#define DLL void *
+#endif
 
 #include "gem.h"
 #include "memory.h"
@@ -19,10 +26,161 @@
 #include "kernel.h"
 
 
-static int  nReserved    = 6;
-static char *reserved[6] = {"xyz", "uv", "d1", "d2", "curv", "inside"};
-static int  rreserved[6] = {  3,    2,    6,    9,      8,      1 };
+/* reserved DataSet names */
+static int  nReserved    = 8;
+static char *reserved[8] = {"xyz","uv","d1","d2","curv","inside","xyzd","uvd"};
+static int  rreserved[8] = {  3,   2,   6,   9,    8,      1,      3,     2 };
 
+
+/* discrete Method dynamic loading */
+
+#define MAXMETHOD 32
+
+typedef int  (*DLLFunc) (void);
+typedef void (*fQuilt)  (gemQuilt *);
+typedef int  (*dQuilt)  (const gemDRep *, int, gemPair *, gemQuilt *);
+typedef void (*fTris)   (gemTri *);
+typedef int  (*gTris)   (gemQuilt *, int, gemTri *);
+typedef int  (*gInterp) (gemQuilt *, int, int, double *, int, double *,
+                         double *);
+typedef int  (*gIntegr) (gemQuilt *, int, int, gemCutFrag *, int, double *,
+                         double *, double *);
+
+static char   *metName[MAXMETHOD];
+static DLL     metDLL[MAXMETHOD];
+static fQuilt  freeQuilt[MAXMETHOD];
+static dQuilt  defQuilt[MAXMETHOD];
+static fTris   freeTris[MAXMETHOD];
+static gTris   Triangulate[MAXMETHOD];
+static gInterp Interpolate[MAXMETHOD];
+static gIntegr Integrate[MAXMETHOD];
+
+static int     met_nDiscr = 0;
+
+
+/* *********************** Dynamic Load Functions *************************** */
+
+static /*@null@*/ DLL metDLopen(const char *name)
+{
+  int  i, len;
+  DLL  dll;
+  char *full;
+  
+  if (name == NULL) {
+    printf(" Information: Dynamic Loader invoked with NULL name!\n");
+    return NULL;
+  }
+  len  = strlen(name);
+  full = (char *) malloc((len+5)*sizeof(char));
+  if (full == NULL) {
+    printf(" Information: Dynamic Loader MALLOC Error!\n");
+    return NULL;
+  }
+  for (i = 0; i < len; i++) full[i] = name[i];
+  full[len  ] = '.';
+#ifdef WIN32
+  full[len+1] = 'D';
+  full[len+2] = 'L';
+  full[len+3] = 'L';
+  full[len+4] =  0;
+  dll = LoadLibrary(full);
+#else
+  full[len+1] = 's';
+  full[len+2] = 'o';
+  full[len+3] =  0;
+  dll = dlopen(full, RTLD_NOW /* RTLD_LAZY */);
+#endif
+  
+  if (!dll) {
+    printf(" Information: Dynamic Loader Error for %s\n", full);
+#ifndef WIN32
+    printf("              %s\n", dlerror());
+#endif
+    free(full);
+    return NULL;
+  }
+  
+  free(full);
+  return dll;
+}
+
+
+static void metDLclose(/*@only@*/ DLL dll)
+{
+#ifdef WIN32
+  FreeLibrary(dll);
+#else
+  dlclose(dll);
+#endif
+}
+
+
+static DLLFunc metDLget(DLL dll, const char *symname, const char *name)
+{
+  DLLFunc data;
+  
+#ifdef WIN32
+  data = (DLLFunc) GetProcAddress(dll, symname);
+#else
+  data = (DLLFunc) dlsym(dll, symname);
+#endif
+  if (!data)
+    printf("               Couldn't get symbol %s in %s\n", symname, name);
+  return data;
+}
+
+
+static int metDLoaded(const char *name)
+{
+  int i;
+  
+  for (i = 0; i < met_nDiscr; i++)
+    if (strcmp(name, metName[i]) == 0) return i;
+  
+  return -1;
+}
+
+
+static int metDYNload(const char *name)
+{
+  int i, len, ret;
+  DLL dll;
+  
+  if (met_nDiscr >= MAXMETHOD) {
+    printf(" Information: Number of Methods > %d!\n", MAXMETHOD);
+    return GEM_BADINDEX;
+  }
+  dll = metDLopen(name);
+  if (dll == NULL) return GEM_NULLOBJ;
+  
+  ret = met_nDiscr;
+  freeQuilt[ret]   = (fQuilt)  metDLget(dll, "gemFreeQuilt",     name);
+  defQuilt[ret]    = (dQuilt)  metDLget(dll, "gemDefineQuilt",   name);
+  freeTris[ret]    = (fTris)   metDLget(dll, "gemFreeTriangles", name);
+  Triangulate[ret] = (gTris)   metDLget(dll, "gemTriangulate",   name);
+  Interpolate[ret] = (gInterp) metDLget(dll, "gemInterpolation", name);
+  Integrate[ret]   = (gIntegr) metDLget(dll, "gemIntegration",   name);
+  if ((freeQuilt[ret]   == NULL) || (defQuilt[ret]    == NULL) ||
+      (freeTris[ret]    == NULL) || (Triangulate[ret] == NULL) ||
+      (Interpolate[ret] == NULL) || (Integrate[ret]   == NULL)) {
+    metDLclose(dll);
+    return GEM_BADOBJECT;
+  }
+  
+  len  = strlen(name) + 1;
+  metName[ret] = (char *) malloc(len*sizeof(char));
+  if (metName[ret] == NULL) {
+    metDLclose(dll);
+    return GEM_ALLOC;
+  }
+  for (i = 0; i < len; i++) metName[ret][i] = name[i];
+  metDLL[ret] = dll;
+  met_nDiscr++;
+  
+  return ret;
+}
+
+/* ************************************************************************** */
 
 
 static int
@@ -31,7 +189,7 @@ gem_indexName(gemDRep *drep, int bound, int vs, char *name)
   int i;
 
   for (i = 0; i < drep->bound[bound-1].VSet[vs-1].nSets; i++)
-    if (strcmp(name, drep->bound[bound-1].VSet[vs-1].Sets[i].name) == 0)
+    if (strcmp(name, drep->bound[bound-1].VSet[vs-1].sets[i].name) == 0)
       return i+1;
       
   return 0;
@@ -39,58 +197,13 @@ gem_indexName(gemDRep *drep, int bound, int vs, char *name)
 
 
 static void
-gem_freeInt2D(gemInt2D *interp)
+gem_freeAprx2D(gemAprx2D *approx)
 {
-  if (interp == NULL) return;
+  if (approx == NULL) return;
   
-  gem_free(interp->interp);
-  if (interp->uvmap != NULL) gem_free(interp->uvmap);
-  gem_free(interp);
-}
-
-
-int
-gem_newConn(gemConn **conn)
-{
-  gemConn *conns;
-
-  *conn = conns = (gemConn *) gem_allocate(sizeof(gemConn));
-  if (conns == NULL) return GEM_ALLOC;
-
-  conns->magic     = GEM_MCONN;
-  conns->nTris     = 0;
-  conns->Tris      = NULL;
-  conns->tNei      = NULL;
-  conns->nQuad     = 0;
-  conns->Quad      = NULL;
-  conns->qNei      = NULL;
-  conns->meshSz[0] = 0;
-  conns->meshSz[1] = 0;
-  conns->nSides    = 0;
-  conns->sides     = NULL;
-
-  return GEM_SUCCESS;
-}
-
-
-int
-gem_freeConn(/*@only@*/ gemConn *conn)
-{
-  if (conn == NULL) return GEM_NULLOBJ;
-  if (conn->magic != GEM_MCONN) return GEM_BADOBJECT;
-
-  if (conn->nTris > 0) {
-    gem_free(conn->Tris);
-    gem_free(conn->tNei);
-  }
-  if (conn->nQuad > 0) {
-    gem_free(conn->Quad);
-    gem_free(conn->qNei);
-  }
-  gem_free(conn->sides);
-  gem_free(conn);
-
-  return GEM_SUCCESS;
+  gem_free(approx->interp);
+  if (approx->uvmap != NULL) gem_free(approx->uvmap);
+  gem_free(approx);
 }
 
 
@@ -101,25 +214,24 @@ gem_freeVsets(gemBound bound)
   
   for (i = 0; i < bound.nVSet; i++) {
 
-    if (bound.VSet[i].nFaces != 0) {
-      n = bound.VSet[i].nFaces;
-      if (n == -1) n = 1;
-      for (j = 0; j < n; j++) {
-        gem_free(bound.VSet[i].faces[j].xyz);
-        gem_free(bound.VSet[i].faces[j].uv);
-        gem_free(bound.VSet[i].faces[j].guv);
-        gem_freeConn(bound.VSet[i].faces[j].conn);
-      }
-      gem_free(bound.VSet[i].faces);
+    if (bound.VSet[i].quilt != NULL) {
+      n = metDLoaded(bound.VSet[i].disMethod);
+      if (n >= 0) freeQuilt[n](bound.VSet[i].quilt);
+      if (bound.VSet[i].gbase != NULL) freeTris[n](bound.VSet[i].gbase);
+      if (bound.VSet[i].dbase != NULL) freeTris[n](bound.VSet[i].dbase);
+      gem_free(bound.VSet[i].disMethod);
+    }
+    
+    if (bound.VSet[i].nonconn != NULL) {
+      gem_free(bound.VSet[i].nonconn->data);
+      gem_free(bound.VSet[i].nonconn);
     }
 
     for (j = 0; j < bound.VSet[i].nSets; j++) {
-      gem_free(bound.VSet[i].Sets[j].name);
-      gem_free(bound.VSet[i].Sets[j].data);
-      if (bound.VSet[i].Sets[j].interp != NULL)
-        gem_freeInt2D(bound.VSet[i].Sets[j].interp);
+      gem_free(bound.VSet[i].sets[j].name);
+      gem_free(bound.VSet[i].sets[j].dset.data);
     }
-    if (bound.VSet[i].Sets != NULL) gem_free(bound.VSet[i].Sets);
+    if (bound.VSet[i].sets != NULL) gem_free(bound.VSet[i].sets);
 
   }
   gem_free(bound.VSet);
@@ -227,19 +339,27 @@ gem_tesselDRep(gemDRep *drep, int brep, double angle, double mxside,
   if (brep != 0) {
     stat = gem_kernelTessel(model->BReps[brep-1]->body, angle, mxside, sag,
                             drep, brep);
-    if (stat == GEM_SUCCESS)
+    if (stat == GEM_SUCCESS) {
       for (k = 0; k < drep->TReps[brep-1].nFaces; k++)
         gem_xform(model->BReps[brep-1], drep->TReps[brep-1].Faces[k].npts,
-                  drep->TReps[brep-1].Faces[k].xyz);
+                  drep->TReps[brep-1].Faces[k].xyzs);
+      for (k = 0; k < drep->TReps[brep-1].nEdges; k++)
+        gem_xform(model->BReps[brep-1], drep->TReps[brep-1].Edges[k].npts,
+                  drep->TReps[brep-1].Edges[k].xyzs);
+    }
   } else {
     stat = -9999;
     for (i = 0; i < drep->nBReps; i++) {
       j = gem_kernelTessel(model->BReps[i]->body, angle, mxside, sag,
                            drep, i+1);
-      if (j == GEM_SUCCESS)
+      if (j == GEM_SUCCESS) {
         for (k = 0; k < drep->TReps[i].nFaces; k++)
           gem_xform(model->BReps[i], drep->TReps[i].Faces[k].npts,
-                    drep->TReps[i].Faces[k].xyz);
+                    drep->TReps[i].Faces[k].xyzs);
+        for (k = 0; k < drep->TReps[i].nEdges; k++)
+          gem_xform(model->BReps[i], drep->TReps[i].Edges[k].npts,
+                    drep->TReps[i].Edges[k].xyzs);
+      }
       if (j > stat) stat = j;
     }
   }
@@ -248,14 +368,35 @@ gem_tesselDRep(gemDRep *drep, int brep, double angle, double mxside,
 }
 
 
-int
-gem_getTessel(gemDRep *drep, gemPair bface, int *nvrt, double **xyz,
-              double **uv, gemConn **conn)
+extern int
+gem_getDiscrete(gemDRep *drep, gemPair bedge, int *npts, double **xyz)
 {
-  *nvrt = 0;
+  *npts = 0;
   *xyz  = NULL;
-  *uv   = NULL;
-  *conn = NULL;
+  if (drep == NULL) return GEM_NULLOBJ;
+  if (drep->magic != GEM_MDREP) return GEM_BADDREP;
+  
+  if (drep->TReps == NULL) return GEM_NOTESSEL;
+  if ((bedge.BRep  < 1) || (bedge.BRep > drep->nBReps)) return GEM_BADINDEX;
+  if (drep->TReps[bedge.BRep-1].Edges == NULL) return GEM_NOTESSEL;
+  if ((bedge.index < 1) ||
+      (bedge.index > drep->TReps[bedge.BRep-1].nEdges)) return GEM_BADINDEX;
+  
+  *npts = drep->TReps[bedge.BRep-1].Edges[bedge.index-1].npts;
+  *xyz  = drep->TReps[bedge.BRep-1].Edges[bedge.index-1].xyzs;
+  
+  return GEM_SUCCESS;
+}
+
+
+int
+gem_getTessel(gemDRep *drep, gemPair bface, int *ntris, int *npts, int **tris,
+              double **xyz)
+{
+  *ntris = 0;
+  *npts  = 0;
+  *tris  = NULL;
+  *xyz   = NULL;
   if (drep == NULL) return GEM_NULLOBJ;
   if (drep->magic != GEM_MDREP) return GEM_BADDREP;
 
@@ -265,21 +406,35 @@ gem_getTessel(gemDRep *drep, gemPair bface, int *nvrt, double **xyz,
   if ((bface.index < 1) ||
       (bface.index > drep->TReps[bface.BRep-1].nFaces)) return GEM_BADINDEX;
 
-  *nvrt = drep->TReps[bface.BRep-1].Faces[bface.index-1].npts;
-  *xyz  = drep->TReps[bface.BRep-1].Faces[bface.index-1].xyz;
-  *uv   = drep->TReps[bface.BRep-1].Faces[bface.index-1].uv;
-  *conn = drep->TReps[bface.BRep-1].Faces[bface.index-1].conn;
+  *ntris = drep->TReps[bface.BRep-1].Faces[bface.index-1].ntris;
+  *npts  = drep->TReps[bface.BRep-1].Faces[bface.index-1].npts;
+  *tris  = drep->TReps[bface.BRep-1].Faces[bface.index-1].tris;
+  *xyz   = drep->TReps[bface.BRep-1].Faces[bface.index-1].xyzs;
   
   return GEM_SUCCESS;
+}
+
+
+static void
+gem_freeCutter(gemCutter *cutter)
+{
+  int i;
+  
+  for (i = 0; i < cutter->nEle; i++) {
+    gem_free(cutter->elements[i].cutVerts);
+    gem_free(cutter->elements[i].cutTris);
+  }
+  gem_free(cutter->elements);
 }
 
 
 int
 gem_destroyDRep(gemDRep *drep)
 {
-  int      i, j;
-  gemCntxt *cntxt;
-  gemDRep  *prev, *next;
+  int       i, j;
+  gemCntxt  *cntxt;
+  gemDRep   *prev, *next;
+  gemCutter *cutter, *last;
 
   if (drep == NULL) return GEM_NULLOBJ;
   if (drep->magic != GEM_MDREP) return GEM_BADDREP;
@@ -315,12 +470,21 @@ gem_destroyDRep(gemDRep *drep)
   for (i = 0; i < drep->nBReps; i++) {
     if (drep->TReps[i].Faces != NULL) {
       for (j = 0; j < drep->TReps[i].nFaces; j++) {
-        gem_free(drep->TReps[i].Faces[j].xyz);
-        gem_free(drep->TReps[i].Faces[j].uv);
-        gem_free(drep->TReps[i].Faces[j].guv);
-        gem_freeConn(drep->TReps[i].Faces[j].conn);
+        gem_free(drep->TReps[i].Faces[j].xyzs);
+        gem_free(drep->TReps[i].Faces[j].tris);
+        gem_free(drep->TReps[i].conns[j].tric);
+        gem_free(drep->TReps[i].conns[j].uvs);
+        gem_free(drep->TReps[i].conns[j].vid);
       }
       gem_free(drep->TReps[i].Faces);
+      gem_free(drep->TReps[i].conns);
+    }
+    if (drep->TReps[i].Edges != NULL) {
+      for (j = 0; j < drep->TReps[i].nEdges; j++) {
+        gem_free(drep->TReps[i].Edges[j].xyzs);
+        gem_free(drep->TReps[i].Edges[j].ts);
+      }
+      gem_free(drep->TReps[i].Edges);
     }
   }
   gem_free(drep->TReps);
@@ -329,9 +493,15 @@ gem_destroyDRep(gemDRep *drep)
     for (i = 0; i < drep->nBound; i++) {
       gem_free(drep->bound[i].IDs);
       gem_free(drep->bound[i].indices);
-      if (drep->bound[i].surface != NULL) 
-        gem_freeInt2D(drep->bound[i].surface);
+      if (drep->bound[i].surface != NULL)
+        gem_freeAprx2D(drep->bound[i].surface);
       gem_freeVsets(drep->bound[i]);
+      cutter = drep->bound[i].cutList;
+      while (cutter != NULL) {
+        last   = cutter;
+        cutter = cutter->next;
+        gem_freeCutter(last);
+      }
     }
     gem_free(drep->bound);
   }
@@ -348,11 +518,12 @@ gem_destroyDRep(gemDRep *drep)
 int
 gem_clrDReps(gemModel *model, int phase)
 {
-  int      i, j, hit;
-  gemModel *prev;
-  gemDRep  *drep;
-  gemCntxt *cntxt;
-  gemTRep  *trep;
+  int       i, j, hit;
+  gemModel  *prev;
+  gemDRep   *drep;
+  gemCntxt  *cntxt;
+  gemTRep   *trep;
+  gemCutter *cutter, *last;
   
   if (model == NULL) return GEM_NULLOBJ;
   if (model->magic != GEM_MMODEL) return GEM_BADMODEL;
@@ -382,12 +553,21 @@ gem_clrDReps(gemModel *model, int phase)
           for (i = 0; i < drep->nBReps; i++) {
             if (drep->TReps[i].Faces != NULL) {
               for (j = 0; j < drep->TReps[i].nFaces; j++) {
-                gem_free(drep->TReps[i].Faces[j].xyz);
-                gem_free(drep->TReps[i].Faces[j].uv);
-                gem_free(drep->TReps[i].Faces[j].guv);
-                gem_freeConn(drep->TReps[i].Faces[j].conn);
+                gem_free(drep->TReps[i].Faces[j].xyzs);
+                gem_free(drep->TReps[i].Faces[j].tris);
+                gem_free(drep->TReps[i].conns[j].tric);
+                gem_free(drep->TReps[i].conns[j].uvs);
+                gem_free(drep->TReps[i].conns[j].vid);
               }
               gem_free(drep->TReps[i].Faces);
+              gem_free(drep->TReps[i].conns);
+            }
+            if (drep->TReps[i].Edges != NULL) {
+              for (j = 0; j < drep->TReps[i].nEdges; j++) {
+                gem_free(drep->TReps[i].Edges[j].xyzs);
+                gem_free(drep->TReps[i].Edges[j].ts);
+              }
+              gem_free(drep->TReps[i].Edges);
             }
           }
           gem_free(drep->TReps);
@@ -398,14 +578,21 @@ gem_clrDReps(gemModel *model, int phase)
             for (i = 0; i < drep->nBound; i++) {
               gem_free(drep->bound[i].IDs);
               gem_free(drep->bound[i].indices);
-              if (drep->bound[i].surface != NULL) 
-                gem_freeInt2D(drep->bound[i].surface);
+              if (drep->bound[i].surface != NULL)
+                gem_freeAprx2D(drep->bound[i].surface);
               gem_freeVsets(drep->bound[i]);
+              cutter = drep->bound[i].cutList;
+              while (cutter != NULL) {
+                last   = cutter;
+                cutter = cutter->next;
+                gem_freeCutter(last);
+              }
             }
             gem_free(drep->bound);
             drep->nBound = 0;
             drep->bound  = NULL;
           }
+
         } else {
         
           /* repopulate */
@@ -414,6 +601,8 @@ gem_clrDReps(gemModel *model, int phase)
             for (i = 0; i < model->nBRep; i++) {
               trep[i].nFaces = 0;
               trep[i].Faces  = NULL;
+              trep[i].nEdges = 0;
+              trep[i].Edges  = NULL;
             }
             drep->nBReps = model->nBRep;
             drep->TReps  = trep;  
@@ -541,6 +730,7 @@ gem_createBound(gemDRep *drep, int nIDs, char **IDs, int *bound)
   drep->bound[*bound-1].uvbox[3] = 0.0;
   drep->bound[*bound-1].nVSet    = 0;
   drep->bound[*bound-1].VSet     = NULL;
+  drep->bound[*bound-1].cutList  = NULL;
   
   return GEM_SUCCESS;
 }
@@ -549,11 +739,12 @@ gem_createBound(gemDRep *drep, int nIDs, char **IDs, int *bound)
 int
 gem_extendBound(gemDRep *drep, int bound, int nIDs, char **IDs)
 {
-  int      i, j, k, n, *iIDs;
-  char     **ctmp;
-  gemPair  *indices;
-  gemModel *model;
-  gemBody  *body;
+  int       i, j, k, n, *iIDs;
+  char      **ctmp;
+  gemPair   *indices;
+  gemModel  *model;
+  gemBody   *body;
+  gemCutter *cutter, *last;
 
   if (drep == NULL) return GEM_NULLOBJ;
   if (drep->magic != GEM_MDREP) return GEM_BADDREP;
@@ -637,9 +828,15 @@ gem_extendBound(gemDRep *drep, int bound, int nIDs, char **IDs)
   for (i = 0; i < n; i++)
     indices[i] = drep->bound[bound-1].indices[i];
 
-  if (drep->bound[bound-1].surface != NULL) 
-    gem_freeInt2D(drep->bound[bound-1].surface);
+  if (drep->bound[bound-1].surface != NULL)
+    gem_freeAprx2D(drep->bound[bound-1].surface);
   gem_freeVsets(drep->bound[bound-1]);
+  cutter = drep->bound[bound-1].cutList;
+  while (cutter != NULL) {
+    last   = cutter;
+    cutter = cutter->next;
+    gem_freeCutter(last);
+  }
   gem_free(drep->bound[bound-1].IDs);
   gem_free(drep->bound[bound-1].indices);
 
@@ -652,7 +849,8 @@ gem_extendBound(gemDRep *drep, int bound, int nIDs, char **IDs)
   drep->bound[bound-1].uvbox[2]  = 0.0;
   drep->bound[bound-1].uvbox[3]  = 0.0;
   drep->bound[bound-1].nVSet     = 0;
-  drep->bound[bound-1].VSet      = NULL;  
+  drep->bound[bound-1].VSet      = NULL;
+  drep->bound[bound-1].cutList   = NULL;
   
   return GEM_SUCCESS;
 }
@@ -790,18 +988,27 @@ gem_copyDRep(gemDRep *src, gemModel *model, gemDRep **drep, int *nIDx,
 
 
 int
-gem_createVset(gemDRep *drep, int bound, int *vs)
+gem_createVset(gemDRep *drep, int bound, char *disMethod, int *vs)
 {
-  int     n;
-  gemVSet *temp;
+  int      stat, n;
+  gemVSet  *temp;
+  gemQuilt *quilt;
   
   *vs = 0;
   if (drep == NULL) return GEM_NULLOBJ;
   if (drep->magic != GEM_MDREP) return GEM_BADDREP;
   if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
-  n = drep->bound[bound-1].nVSet;
+  if (disMethod == NULL) return GEM_NULLNAME;
   
-  /* make the new bound */
+  /* deal with discretization method */
+  stat = metDLoaded(disMethod);
+  if (stat == -1) {
+    stat = metDYNload(disMethod);
+    if (stat < 0) return stat;
+  }
+  
+  /* make the new VertexSet */
+  n = drep->bound[bound-1].nVSet;
   if (n == 0) {
     drep->bound[bound-1].VSet = (gemVSet *) gem_allocate(sizeof(gemVSet));
     if (drep->bound[bound-1].VSet == NULL) return GEM_ALLOC;
@@ -811,195 +1018,30 @@ gem_createVset(gemDRep *drep, int bound, int *vs)
     if (temp == NULL) return GEM_ALLOC;
     drep->bound[bound-1].VSet = temp;
   }
-  
+  quilt = (gemQuilt *) gem_allocate(sizeof(gemQuilt));
+  if (quilt == NULL) return GEM_ALLOC;
+  drep->bound[bound-1].VSet[n].disMethod = gem_strdup(disMethod);
+  if (drep->bound[bound-1].VSet[n].disMethod == NULL) {
+    gem_free(quilt);
+    return GEM_ALLOC;
+  }
+  stat = defQuilt[stat](drep, drep->bound[bound-1].nIDs,
+                              drep->bound[bound-1].indices, quilt);
+  if (stat != GEM_SUCCESS) {
+    gem_free(drep->bound[bound-1].VSet[n].disMethod);
+    gem_free(quilt);
+    return stat;
+  }
+
+  drep->bound[bound-1].VSet[n].quilt   = quilt;
+  drep->bound[bound-1].VSet[n].gbase   = NULL;
+  drep->bound[bound-1].VSet[n].dbase   = NULL;
+  drep->bound[bound-1].VSet[n].nonconn = NULL;
+  drep->bound[bound-1].VSet[n].nSets   = 0;
+  drep->bound[bound-1].VSet[n].sets    = NULL;
+
   drep->bound[bound-1].nVSet++;
   *vs = n+1;
-  drep->bound[bound-1].VSet[n].npts   = 0;
-  drep->bound[bound-1].VSet[n].nFaces = 0;
-  drep->bound[bound-1].VSet[n].faces  = NULL;
-  drep->bound[bound-1].VSet[n].nSets  = 0;
-  drep->bound[bound-1].VSet[n].Sets   = NULL;
-
-  return GEM_SUCCESS;
-}
-
-
-int
-gem_emptyVset(gemDRep *drep, int bound, int vs)
-{
-  int j;
-
-  if (drep == NULL) return GEM_NULLOBJ;
-  if (drep->magic != GEM_MDREP) return GEM_BADDREP;
-  if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
-  if ((vs < 1) || (vs > drep->bound[bound-1].nVSet)) return GEM_BADVSETINDEX;
-  if (drep->bound[bound-1].VSet[vs-1].nFaces == -1) return GEM_BADVSETINDEX;
-
-  if (drep->bound[bound-1].VSet[vs-1].nFaces > 0) {
-    for (j = 0; j < drep->bound[bound-1].VSet[vs-1].nFaces; j++) {
-      gem_free(drep->bound[bound-1].VSet[vs-1].faces[j].xyz);
-      gem_free(drep->bound[bound-1].VSet[vs-1].faces[j].uv);
-      gem_free(drep->bound[bound-1].VSet[vs-1].faces[j].guv);
-      gem_freeConn(drep->bound[bound-1].VSet[vs-1].faces[j].conn);
-    }
-    gem_free(drep->bound[bound-1].VSet[vs-1].faces);
-    drep->bound[bound-1].VSet[vs-1].nFaces = 0;
-    drep->bound[bound-1].VSet[vs-1].faces  = NULL;
-  }
-
-  for (j = 0; j < drep->bound[bound-1].VSet[vs-1].nSets; j++) {
-    gem_free(drep->bound[bound-1].VSet[vs-1].Sets[j].name);
-    gem_free(drep->bound[bound-1].VSet[vs-1].Sets[j].data);
-    if (drep->bound[bound-1].VSet[vs-1].Sets[j].interp != NULL)
-      gem_freeInt2D(drep->bound[bound-1].VSet[vs-1].Sets[j].interp);
-  }
-  gem_free(drep->bound[bound-1].VSet[vs-1].Sets);
-  drep->bound[bound-1].VSet[vs-1].nSets = 0;
-  drep->bound[bound-1].VSet[vs-1].Sets  = NULL;
-  drep->bound[bound-1].VSet[vs-1].npts  = 0;
-  
-  return GEM_SUCCESS;
-}
-
-
-int
-gem_addVset(gemDRep *drep, int bound, int vs, gemPair bface, int npts,
-            double *xyz, double *uv, gemConn *conn)
-{
-  int      i, j;
-  double   *xyzs, *uvs;
-  char     *ID;
-  gemModel *model;
-  gemBody  *body;
-  gemConn  *conns;
-  gemTface *temp;
-
-  if (drep == NULL) return GEM_NULLOBJ;
-  if (drep->magic != GEM_MDREP) return GEM_BADDREP;
-  if (conn == NULL) return GEM_NULLOBJ;
-  if (conn->magic != GEM_MCONN) return GEM_BADOBJECT;
-
-  if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
-  if ((vs < 1) || (vs > drep->bound[bound-1].nVSet)) return GEM_BADVSETINDEX;
-  if (drep->bound[bound-1].VSet[vs-1].nFaces == -1) return GEM_BADTYPE;
-  model = drep->model;
-  if ((bface.BRep < 1) || (bface.BRep > model->nBRep)) return GEM_BADINDEX;
-  body = model->BReps[bface.BRep-1]->body;
-  if ((bface.index < 1) || (bface.index > body->nface)) return GEM_BADINDEX;
-  if (npts <= 0) return GEM_BADVALUE;
-  if ((xyz == NULL) || (uv == NULL)) return GEM_NULLVALUE;
-
-  ID   = body->faces[bface.index-1].ID;
-  xyzs = (double *) gem_allocate(npts*3*sizeof(double));
-  if (xyzs == NULL) return GEM_ALLOC;
-  for (i = 0; i < 3*npts; i++) xyzs[i] = xyz[i];
-  uvs = (double *) gem_allocate(npts*2*sizeof(double));
-  if (uvs == NULL) {
-    gem_free(xyzs);
-    return GEM_ALLOC;
-  }
-  for (i = 0; i < 2*npts; i++) uvs[i] = uv[i];
-
-  /* copy connectivity */
-  conns = (gemConn *) gem_allocate(sizeof(gemConn));
-  if (conns == NULL) {
-    gem_free(uvs);
-    gem_free(xyzs);
-    return GEM_ALLOC;
-  }
-  conns->magic     = GEM_MCONN;
-  conns->nTris     = conn->nTris;
-  conns->Tris      = NULL;
-  conns->tNei      = NULL;
-  conns->nQuad     = conn->nQuad;
-  conns->Quad      = NULL;
-  conns->qNei      = NULL;
-  conns->meshSz[0] = conn->meshSz[0];
-  conns->meshSz[1] = conn->meshSz[1];
-  conns->nSides    = conn->nSides;
-  conns->sides     = NULL;
-  
-  if (conn->nTris != 0) {
-    conns->Tris = (int *) gem_allocate(3*conn->nTris*sizeof(int));
-    conns->tNei = (int *) gem_allocate(3*conn->nTris*sizeof(int));
-    if ((conns->Tris == NULL) || (conns->tNei == NULL)) {
-      gem_freeConn(conns);
-      gem_free(uvs);
-      gem_free(xyzs);
-      return GEM_ALLOC;      
-    }
-    for (i = 0; i < 3*conn->nTris; i++) {
-      conns->Tris[i] = conn->Tris[i];
-      conns->tNei[i] = conn->tNei[i];
-    }
-  }
-  if (conn->nQuad != 0) {
-    conns->Quad = (int *) gem_allocate(4*conn->nQuad*sizeof(int));
-    conns->qNei = (int *) gem_allocate(4*conn->nQuad*sizeof(int));
-    if ((conns->Quad == NULL) || (conns->qNei == NULL)) {
-      gem_freeConn(conns);
-      gem_free(uvs);
-      gem_free(xyzs);
-      return GEM_ALLOC;      
-    }
-    for (i = 0; i < 4*conn->nQuad; i++) {
-      conns->Quad[i] = conn->Quad[i];
-      conns->qNei[i] = conn->qNei[i];
-    }
-  }
-  if (conn->nSides != 0) {
-    conns->sides = (gemSide *) gem_allocate(conn->nSides*sizeof(gemSide));
-    if (conns->sides == NULL) {
-      gem_freeConn(conns);
-      gem_free(uvs);
-      gem_free(xyzs);
-      return GEM_ALLOC; 
-    }
-    for (i = 0; i < conn->nSides; i++) 
-      conns->sides[i] = conn->sides[i];
-  }
-  
-  /* add this to the VertexSet */
-  
-  if (drep->bound[bound-1].VSet[vs-1].nFaces == 0) {
-    drep->bound[bound-1].VSet[vs-1].faces = (gemTface *) 
-                                            gem_allocate(sizeof(gemTface));
-    if (drep->bound[bound-1].VSet[vs-1].faces == NULL) {
-      gem_freeConn(conns);
-      gem_free(uvs);
-      gem_free(xyzs);
-      return GEM_ALLOC; 
-    }
-    i = 0;
-  } else {
-    i    = drep->bound[bound-1].VSet[vs-1].nFaces;
-    temp = (gemTface *) 
-           gem_reallocate(drep->bound[bound-1].VSet[vs-1].faces,
-                          (i+1)*sizeof(gemTface));
-    if (temp == NULL) {
-      gem_freeConn(conns);
-      gem_free(uvs);
-      gem_free(xyzs);
-      return GEM_ALLOC; 
-    }
-    drep->bound[bound-1].VSet[vs-1].faces = temp;
-  }
-  
-  drep->bound[bound-1].VSet[vs-1].faces[i].index = bface;
-  drep->bound[bound-1].VSet[vs-1].faces[i].ID    = 0;
-  drep->bound[bound-1].VSet[vs-1].faces[i].npts  = npts;
-  drep->bound[bound-1].VSet[vs-1].faces[i].xyz   = xyzs;
-  drep->bound[bound-1].VSet[vs-1].faces[i].uv    = uvs;
-  drep->bound[bound-1].VSet[vs-1].faces[i].guv   = NULL;
-  drep->bound[bound-1].VSet[vs-1].faces[i].conn  = conns;
-  drep->bound[bound-1].VSet[vs-1].nFaces++;
-  drep->bound[bound-1].VSet[vs-1].npts += npts;
-  
-  for (j = 0; j < drep->nIDs; j++)
-    if (strcmp(ID, drep->IDs[j]) == 0) {
-      drep->bound[bound-1].VSet[vs-1].faces[i].ID = j+1;
-      break;
-    }
 
   return GEM_SUCCESS;
 }
@@ -1008,11 +1050,10 @@ gem_addVset(gemDRep *drep, int bound, int vs, gemPair bface, int npts,
 int
 gem_makeVset(gemDRep *drep, int bound, int npts, double *xyz, int *vs)
 {
-  int      i, n;
-  double   *xyzs;
-  gemVSet  *temp;
-  gemTface *faces;
-  gemPair   bface;
+  int       i, n;
+  double    *xyzs;
+  gemVSet   *temp;
+  gemCollct *collct;
   
   *vs = 0;
   if (drep == NULL) return GEM_NULLOBJ;
@@ -1020,11 +1061,11 @@ gem_makeVset(gemDRep *drep, int bound, int npts, double *xyz, int *vs)
   if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
   n = drep->bound[bound-1].nVSet;
 
-  faces = (gemTface *) gem_allocate(sizeof(gemTface));
-  if (faces == NULL) return GEM_ALLOC;
+  collct = (gemCollct *) gem_allocate(sizeof(gemCollct));
+  if (collct == NULL) return GEM_ALLOC;
   xyzs = (double *) gem_allocate(npts*3*sizeof(double));
   if (xyzs == NULL) {
-    gem_free(faces);
+    gem_free(collct);
     return GEM_ALLOC;
   }
   for (i = 0; i < 3*npts; i++) xyzs[i] = xyz[i];
@@ -1034,7 +1075,7 @@ gem_makeVset(gemDRep *drep, int bound, int npts, double *xyz, int *vs)
     drep->bound[bound-1].VSet = (gemVSet *) gem_allocate(sizeof(gemVSet));
     if (drep->bound[bound-1].VSet == NULL) {
       gem_free(xyzs);
-      gem_free(faces);
+      gem_free(collct);
       return GEM_ALLOC;
     }
   } else {
@@ -1042,152 +1083,60 @@ gem_makeVset(gemDRep *drep, int bound, int npts, double *xyz, int *vs)
                                       (n+1)*sizeof(gemVSet));
     if (temp == NULL) {
       gem_free(xyzs);
-      gem_free(faces);
+      gem_free(collct);
       return GEM_ALLOC;
     }
     drep->bound[bound-1].VSet = temp;
   }
   
+  collct->npts = npts;
+  collct->rank = 3;
+  collct->data = xyzs;
+  
+  drep->bound[bound-1].VSet[n].quilt   = NULL;
+  drep->bound[bound-1].VSet[n].gbase   = NULL;
+  drep->bound[bound-1].VSet[n].dbase   = NULL;
+  drep->bound[bound-1].VSet[n].nonconn = collct;
+  drep->bound[bound-1].VSet[n].nSets   = 0;
+  drep->bound[bound-1].VSet[n].sets    = NULL;
+
   drep->bound[bound-1].nVSet++;
   *vs = n+1;
-  drep->bound[bound-1].VSet[n].npts   = npts;
-  drep->bound[bound-1].VSet[n].nFaces = -1;
-  drep->bound[bound-1].VSet[n].faces  = faces;
-  drep->bound[bound-1].VSet[n].nSets  = 0;
-  drep->bound[bound-1].VSet[n].Sets   = NULL;
-  
-  bface.BRep = bface.index = 0;
-  drep->bound[bound-1].VSet[n].faces[0].index = bface;
-  drep->bound[bound-1].VSet[n].faces[0].ID    = 0;
-  drep->bound[bound-1].VSet[n].faces[0].npts  = npts;
-  drep->bound[bound-1].VSet[n].faces[0].xyz   = xyzs;
-  drep->bound[bound-1].VSet[n].faces[0].uv    = NULL;
-  drep->bound[bound-1].VSet[n].faces[0].guv   = NULL;
-  drep->bound[bound-1].VSet[n].faces[0].conn  = NULL;
 
   return GEM_SUCCESS;
 }
 
 
 int
-gem_paramBound(gemDRep *drep, int bound, int vs)
+gem_paramBound(gemDRep *drep, int bound)
 {
-  int    i, j, np, stat;
-  double *sdat1, *sdat2;
-
   if (drep == NULL) return GEM_NULLOBJ;
   if (drep->magic != GEM_MDREP) return GEM_BADDREP;
 
   if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
-  if ((vs < 1) || (vs > drep->bound[bound-1].nVSet)) return GEM_BADVSETINDEX;
-  if (drep->bound[bound-1].VSet[vs-1].nFaces == -1)  return GEM_BADTYPE;
-  if (drep->bound[bound-1].VSet[vs-1].nFaces ==  0)  return GEM_BADOBJECT;
-  if (drep->bound[bound-1].VSet[vs-1].nSets  !=  0)  return GEM_NOTPARAMBND;
 
-  sdat1 = (double *) gem_allocate(drep->bound[bound-1].VSet[vs-1].npts*
-                                  3*sizeof(double));
-  if (sdat1 == NULL) return GEM_ALLOC;
-  sdat2 = (double *) gem_allocate(drep->bound[bound-1].VSet[vs-1].npts*
-                                  2*sizeof(double));
-  if (sdat2 == NULL) {
-    gem_free(sdat1);
-    return GEM_ALLOC;
-  }
+  /* populate "xyz" and "uv" and optionally "xyzd" and "uvd" in Vsets */
 
-  if (drep->bound[bound-1].VSet[vs-1].nFaces == 1) {
-  
-    /* single Face in Vset */
-    if (drep->bound[bound-1].VSet[vs-1].faces[0].xyz == NULL) {
-      stat = gem_kernelEval(drep, bound, vs, 0, 0);
-      if (stat != GEM_SUCCESS) {
-        gem_free(sdat2);
-        gem_free(sdat1);
-        return stat;
-      }
-    }
-    for (i = 0; i < 3*drep->bound[bound-1].VSet[vs-1].faces[0].npts; i++)
-      sdat1[i] = drep->bound[bound-1].VSet[vs-1].faces[0].xyz[i];
-
-    if (drep->bound[bound-1].VSet[vs-1].faces[0].uv == NULL) {
-      stat = gem_kernelEval(drep, bound, vs, 0, 1);
-      if (stat != GEM_SUCCESS) {
-        gem_free(sdat2);
-        gem_free(sdat1);
-        return stat;
-      }
-    }
-    for (i = 0; i < 2*drep->bound[bound-1].VSet[vs-1].faces[0].npts; i++)
-      sdat2[i] = drep->bound[bound-1].VSet[vs-1].faces[0].uv[i];
- 
-  } else {
-  
-    /* multiple Faces */
-
-    for (np = j = 0; j < drep->bound[bound-1].VSet[vs-1].nFaces; j++) {
-      if (drep->bound[bound-1].VSet[vs-1].faces[j].xyz == NULL) {
-        stat = gem_kernelEval(drep, bound, vs, j, 0);
-        if (stat != GEM_SUCCESS) {
-          gem_free(sdat2);
-          gem_free(sdat1);
-          return stat;
-        }
-      }
-      for (i = 0; i < drep->bound[bound-1].VSet[vs-1].faces[j].npts; i++) {
-        sdat1[3*np  ] = drep->bound[bound-1].VSet[vs-1].faces[j].xyz[3*i  ];
-        sdat1[3*np+1] = drep->bound[bound-1].VSet[vs-1].faces[j].xyz[3*i+1];
-        sdat1[3*np+2] = drep->bound[bound-1].VSet[vs-1].faces[j].xyz[3*i+2];
-        np++;
-      }
-      if (drep->bound[bound-1].VSet[vs-1].faces[j].uv == NULL) {
-        stat = gem_kernelEval(drep, bound, vs, j, 1);
-        if (stat != GEM_SUCCESS) {
-          gem_free(sdat2);
-          gem_free(sdat1);
-          return stat;
-        }
-      }
-    }
-    /* parameterize the "quilt" */
-    
-  
-  }
-  
-  drep->bound[bound-1].VSet[vs-1].Sets = (gemSet *) 
-                                         gem_allocate(2*sizeof(gemSet));
-  if (drep->bound[bound-1].VSet[vs-1].Sets == NULL) {
-    gem_free(sdat2);
-    gem_free(sdat1);
-    return GEM_ALLOC;
-  }
-  drep->bound[bound-1].VSet[vs-1].nSets          = 2;
-  drep->bound[bound-1].VSet[vs-1].Sets[0].ivsrc  = 0;
-  drep->bound[bound-1].VSet[vs-1].Sets[0].name   = gem_strdup(reserved[0]);
-  drep->bound[bound-1].VSet[vs-1].Sets[0].rank   = rreserved[0];
-  drep->bound[bound-1].VSet[vs-1].Sets[0].data   = sdat1;
-  drep->bound[bound-1].VSet[vs-1].Sets[0].interp = NULL;
-  drep->bound[bound-1].VSet[vs-1].Sets[1].ivsrc  = 0;
-  drep->bound[bound-1].VSet[vs-1].Sets[1].name   = gem_strdup(reserved[1]);
-  drep->bound[bound-1].VSet[vs-1].Sets[1].rank   = rreserved[1];
-  drep->bound[bound-1].VSet[vs-1].Sets[1].data   = sdat2;
-  drep->bound[bound-1].VSet[vs-1].Sets[1].interp = NULL;
   
   return GEM_SUCCESS;
 }
 
 
 int
-gem_putData(gemDRep *drep, int bound, int vs, char *name, int rank,
+gem_putData(gemDRep *drep, int bound, int vs, char *name, int nverts, int rank,
             double *data)
 {
-  int i, k, iset;
+  int     i, k, iset;
+  char    *dname;
+  gemDSet *sets;
 
   if (drep == NULL) return GEM_NULLOBJ;
   if (drep->magic != GEM_MDREP) return GEM_BADDREP;
 
   if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
   if ((vs < 1) || (vs > drep->bound[bound-1].nVSet)) return GEM_BADVSETINDEX;
-  if (drep->bound[bound-1].VSet[vs-1].nFaces == -1) return GEM_NOTCONNECT;
-  if (drep->bound[bound-1].VSet[vs-1].nFaces ==  0) return GEM_BADOBJECT;
+  if (drep->bound[bound-1].VSet[vs-1].quilt   == NULL) return GEM_NOTCONNECT;
+  if (drep->bound[bound-1].VSet[vs-1].nonconn != NULL) return GEM_BADOBJECT;
   if (name == NULL) return GEM_NULLNAME;
   if (data == NULL) return GEM_NULLVALUE;
   
@@ -1200,8 +1149,8 @@ gem_putData(gemDRep *drep, int bound, int vs, char *name, int rank,
       return GEM_BADDSETNAME;
 
   for (iset = i = 0; i < drep->bound[bound-1].VSet[vs-1].nSets; i++)
-    if (strcmp(name, drep->bound[bound-1].VSet[vs-1].Sets[i].name) == 0)
-      if (drep->bound[bound-1].VSet[vs-1].Sets[i].ivsrc == 0) {
+    if (strcmp(name, drep->bound[bound-1].VSet[vs-1].sets[i].name) == 0)
+      if (drep->bound[bound-1].VSet[vs-1].sets[i].ivsrc == 0) {
         iset = i+1;
         break;
       }
@@ -1211,30 +1160,63 @@ gem_putData(gemDRep *drep, int bound, int vs, char *name, int rank,
     for (k = 0; k < drep->bound[bound-1].nVSet; k++) {
       if (k+1 == vs) continue;
       for (i = 0; i < drep->bound[bound-1].VSet[k].nSets; i++)
-        if (strcmp(name, drep->bound[bound-1].VSet[k].Sets[i].name) == 0)
+        if (strcmp(name, drep->bound[bound-1].VSet[k].sets[i].name) == 0)
           return GEM_BADDSETNAME;
     }
   } else {
     /* the name does exist in this Vset -- check rank */
-    if (drep->bound[bound-1].VSet[vs-1].Sets[iset-1].rank != rank) 
+    if (drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.rank != rank)
       return GEM_BADRANK;
+    /* check length */
+    if (drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.npts != nverts)
+      return GEM_FIXEDLEN;
+    /* fill */
+    for (i = 0; i < rank*nverts; i++)
+      drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.data[i] = data[i];
+    
+    return GEM_SUCCESS;
   }
 
-  /* overwrite or put the data */
+  /* put the new data */
   
+  dname = gem_strdup(name);
+  if (dname == NULL) return GEM_ALLOC;
+  iset = drep->bound[bound-1].VSet[vs-1].nSets+1;
+  if (iset == 0) {
+    drep->bound[bound-1].VSet[vs-1].sets = (gemDSet *)
+                                           gem_allocate(sizeof(gemDSet));
+    if (drep->bound[bound-1].VSet[vs-1].sets == NULL) {
+      gem_free(dname);
+      return GEM_ALLOC;
+    }
+  } else {
+    sets = (gemDSet *) gem_reallocate(drep->bound[bound-1].VSet[vs-1].sets,
+                                      iset*sizeof(gemDSet));
+    if (sets == NULL) {
+      gem_free(dname);
+      return GEM_ALLOC;
+    }
+    drep->bound[bound-1].VSet[vs-1].sets = sets;
+  }
+  drep->bound[bound-1].VSet[vs-1].sets[iset-1].ivsrc     = 0;
+  drep->bound[bound-1].VSet[vs-1].sets[iset-1].name      = dname;
+  drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.rank = rank;
+  drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.npts = nverts;
+  for (i = 0; i < rank*nverts; i++)
+    drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.data[i] = data[i];
+  drep->bound[bound-1].VSet[vs-1].nSets++;
 
-  
   return GEM_SUCCESS;
 }
 
 
 int
-gem_getData(gemDRep *drep, int bound, int vs, char *name, int *npts,
+gem_getData(gemDRep *drep, int bound, int vs, char *name, int xfer, int *npts,
             int *rank, double **data)
 {
-  int    i, j, stat, iset, ires, ivsrc = 0, issrc = 0;
-  double *sdat1, *sdat2;
-  gemSet *sets;
+  int     i, j, stat, iset, ires, ivsrc = 0, issrc = 0;
+  double  *sdat1, *sdat2;
+  gemDSet *sets;
 
   *npts = *rank = 0;
   *data = NULL;
@@ -1242,10 +1224,11 @@ gem_getData(gemDRep *drep, int bound, int vs, char *name, int *npts,
   if (drep->magic != GEM_MDREP) return GEM_BADDREP;
 
   if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
-  if ((vs < 1) || (vs > drep->bound[bound-1].nVSet))  return GEM_BADVSETINDEX;
-  if  (drep->bound[bound-1].VSet[vs-1].nFaces ==  0)  return GEM_BADOBJECT;
-  if ((drep->bound[bound-1].VSet[vs-1].nFaces != -1) &&
-      (drep->bound[bound-1].VSet[vs-1].nSets  ==  0)) return GEM_NOTPARAMBND;
+  if ((xfer < GEM_INTERP) || (xfer > (GEM_CONSERVE|GEM_MOMENTS)))
+    return GEM_BADMETHOD;
+  if ((vs < 1) || (vs > drep->bound[bound-1].nVSet)) return GEM_BADVSETINDEX;
+  if ((drep->bound[bound-1].VSet[vs-1].quilt != NULL) &&
+      (drep->bound[bound-1].VSet[vs-1].nSets == 0))  return GEM_NOTPARAMBND;
   if (name == NULL) return GEM_NULLNAME;
 
   /* does the data exist in the Vset? */
@@ -1266,14 +1249,15 @@ gem_getData(gemDRep *drep, int bound, int vs, char *name, int *npts,
       for (j = 0; j < drep->bound[bound-1].nVSet; j++) {
         if (j+1 == vs) continue;
         for (i = 0; i < drep->bound[bound-1].VSet[j].nSets; i++)
-          if (strcmp(name, drep->bound[bound-1].VSet[j].Sets[i].name) == 0) {
+          if (strcmp(name, drep->bound[bound-1].VSet[j].sets[i].name) == 0) {
           ivsrc = j+1;
           issrc = i+1;
           break;
         }      
       }
     } else {
-      if (drep->bound[bound-1].VSet[vs-1].nFaces == -1) return GEM_NOTCONNECT;
+      if (drep->bound[bound-1].VSet[vs-1].nonconn != NULL)
+        return GEM_NOTCONNECT;
     }
   
   /* not already in the Vset -- add it */
@@ -1287,19 +1271,24 @@ gem_getData(gemDRep *drep, int bound, int vs, char *name, int *npts,
       if (ivsrc == 0) return GEM_NOTFOUND;
       /* interpolate from source */
       
+      
     } else {
-      /* reserved name -- do query */
+      /* reserved name -- do the geom query */
+      if (drep->bound[bound-1].VSet[vs-1].quilt != NULL) {
+        *npts = drep->bound[bound-1].VSet[vs-1].quilt->nGpts;
+      } else {
+        return GEM_NOTCONNECT;
+      }
       if (ires < 5) {
 
-        sdat1 = (double *) gem_allocate(drep->bound[bound-1].VSet[vs-1].npts*
-                                        rreserved[2]*sizeof(double));
+        sdat1 = (double *) gem_allocate(*npts*rreserved[2]*sizeof(double));
         if (sdat1 == NULL) return GEM_ALLOC;
-        sdat2 = (double *) gem_allocate(drep->bound[bound-1].VSet[vs-1].npts*
-                                        rreserved[3]*sizeof(double));
+        sdat2 = (double *) gem_allocate(*npts*rreserved[3]*sizeof(double));
         if (sdat2 == NULL) {
           gem_free(sdat1);
           return GEM_ALLOC;
         }
+        
         stat = gem_kernelEvalDs(drep, bound, vs, sdat1, sdat2);
         if (stat != GEM_SUCCESS) {
           gem_free(sdat2);
@@ -1307,30 +1296,29 @@ gem_getData(gemDRep *drep, int bound, int vs, char *name, int *npts,
           return stat;
         }
         iset = drep->bound[bound-1].VSet[vs-1].nSets+2;
-        sets = (gemSet *) gem_reallocate(drep->bound[bound-1].VSet[vs-1].Sets,
-                                         iset*sizeof(gemSet));
+        sets = (gemDSet *) gem_reallocate(drep->bound[bound-1].VSet[vs-1].sets,
+                                          iset*sizeof(gemDSet));
         if (sets == NULL) {
           gem_free(sdat2);
           gem_free(sdat1);
           return GEM_ALLOC;
         }
-        drep->bound[bound-1].VSet[vs-1].nSets               = iset;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-2].ivsrc  = ivsrc;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-2].name   = gem_strdup(reserved[2]);
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-2].rank   = rreserved[2];
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-2].data   = sdat1;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-2].interp = NULL;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].ivsrc  = ivsrc;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].name   = gem_strdup(reserved[3]);
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].rank   = rreserved[3];
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].data   = sdat2;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].interp = NULL;
+        drep->bound[bound-1].VSet[vs-1].nSets                  = iset;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-2].ivsrc     = ivsrc;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-2].name      = gem_strdup(reserved[2]);
+        drep->bound[bound-1].VSet[vs-1].sets[iset-2].dset.npts = *npts;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-2].dset.rank = rreserved[2];
+        drep->bound[bound-1].VSet[vs-1].sets[iset-2].dset.data = sdat1;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].ivsrc     = ivsrc;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].name      = gem_strdup(reserved[3]);
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.npts = *npts;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.rank = rreserved[3];
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.data = sdat2;
         if (ires == 3) iset--;
 
       } else {
     
-        sdat1 = (double *) gem_allocate(drep->bound[bound-1].VSet[vs-1].npts*
-                                        rreserved[ires-1]*sizeof(double));
+        sdat1 = (double *) gem_allocate(*npts*rreserved[ires-1]*sizeof(double));
         if (sdat1 == NULL) return GEM_ALLOC;
         if (ires == 5) {
           stat = gem_kernelCurvature(drep, bound, vs, sdat1);
@@ -1342,26 +1330,51 @@ gem_getData(gemDRep *drep, int bound, int vs, char *name, int *npts,
           return stat;
         }
         iset = drep->bound[bound-1].VSet[vs-1].nSets+1;
-        sets = (gemSet *) gem_reallocate(drep->bound[bound-1].VSet[vs-1].Sets,
-                                         iset*sizeof(gemSet));
+        sets = (gemDSet *) gem_reallocate(drep->bound[bound-1].VSet[vs-1].sets,
+                                          iset*sizeof(gemDSet));
         if (sets == NULL) {
           gem_free(sdat1);
           return GEM_ALLOC;
         }
-        drep->bound[bound-1].VSet[vs-1].nSets               = iset;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].ivsrc  = ivsrc;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].name   = gem_strdup(name);
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].rank   = rreserved[ires-1];
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].data   = sdat1;
-        drep->bound[bound-1].VSet[vs-1].Sets[iset-1].interp = NULL;
-
+        drep->bound[bound-1].VSet[vs-1].nSets                  = iset;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].ivsrc     = ivsrc;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].name      = gem_strdup(name);
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.npts = *npts;
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.rank = rreserved[ires-1];
+        drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.data = sdat1;
       }
     }
   }
 
-  *npts = drep->bound[bound-1].VSet[vs-1].npts;
-  *rank = drep->bound[bound-1].VSet[vs-1].Sets[iset-1].rank;
-  *data = drep->bound[bound-1].VSet[vs-1].Sets[iset-1].data;
+  *npts = drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.npts;
+  *rank = drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.rank;
+  *data = drep->bound[bound-1].VSet[vs-1].sets[iset-1].dset.data;
+  return GEM_SUCCESS;
+}
+
+
+int
+gem_triVset(gemDRep *drep, int bound, int vs, char *name, int *ntris,
+            int *npts, int **tris, double  **xyzs)
+{
+  int iset;
+
+  *npts = *ntris = 0;
+  *tris = NULL;
+  *xyzs = NULL;
+  if (drep == NULL) return GEM_NULLOBJ;
+  if (drep->magic != GEM_MDREP) return GEM_BADDREP;
+  
+  if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
+  if ((vs < 1) || (vs > drep->bound[bound-1].nVSet)) return GEM_BADVSETINDEX;
+  if  (drep->bound[bound-1].VSet[vs-1].nonconn != NULL) return GEM_BADOBJECT;
+  if  (name == NULL) return GEM_NULLNAME;
+  
+  /* does the data exist in the Vset? */
+  iset = gem_indexName(drep, bound, vs, name);
+  if (iset == 0) return GEM_NOTFOUND;
+  
+
   return GEM_SUCCESS;
 }
 
@@ -1405,24 +1418,30 @@ gem_getBoundInfo(gemDRep *drep, int bound, int *nIDs, int **iIDs,
 
 
 int
-gem_getVsetInfo(gemDRep *drep, int bound, int vs, int *vstype, int *npnt,
-                int *nset, char ***names, int **ranks)
+gem_getVsetInfo(gemDRep *drep, int bound, int vs, int *vstype, int *nGpnt,
+                int *nVerts, int *nset, char ***names, int **ivsrc, int **ranks)
 {
   int  i;
   char **vnames;
-  int  *vranks;
+  int  *vranks, *vsrcs;
 
   if (drep == NULL) return GEM_NULLOBJ;
   if (drep->magic != GEM_MDREP) return GEM_BADDREP;
   if ((bound < 1) || (bound > drep->nBound)) return GEM_BADBOUNDINDEX;
   if ((vs < 1) || (vs > drep->bound[bound-1].nVSet)) return GEM_BADINDEX;
   
-  *vstype = 0;
-  if (drep->bound[bound-1].VSet[vs-1].nFaces == -1) *vstype = 1;
-  *npnt  = drep->bound[bound-1].VSet[vs-1].npts;
+  if (drep->bound[bound-1].VSet[vs-1].nonconn != NULL) {
+    *vstype = 1;
+    *nGpnt  = *nVerts = drep->bound[bound-1].VSet[vs-1].nonconn->npts;
+  } else {
+    *vstype = 0;
+    *nGpnt  = drep->bound[bound-1].VSet[vs-1].quilt->nGpts;
+    *nVerts = drep->bound[bound-1].VSet[vs-1].quilt->nVerts;
+  }
   *nset  = drep->bound[bound-1].VSet[vs-1].nSets;
   *names = NULL;
   *ranks = NULL;
+  *ivsrc = NULL;
   
   if (*nset > 0) {
     vranks = (int *)   gem_allocate(*nset*sizeof(int));
@@ -1432,12 +1451,20 @@ gem_getVsetInfo(gemDRep *drep, int bound, int vs, int *vstype, int *npnt,
       gem_free(vranks);
       return GEM_ALLOC;
     }
+    vsrcs  = (int *)   gem_allocate(*nset*sizeof(int));
+    if (vsrcs == NULL) {
+      gem_free(vnames);
+      gem_free(vranks);
+      return GEM_ALLOC;
+    }
     for (i = 0; i < *nset; i++) {
-      vranks[i] = drep->bound[bound-1].VSet[vs-1].Sets[i].rank;
-      vnames[i] = drep->bound[bound-1].VSet[vs-1].Sets[i].name;
+      vranks[i] = drep->bound[bound-1].VSet[vs-1].sets[i].dset.rank;
+      vnames[i] = drep->bound[bound-1].VSet[vs-1].sets[i].name;
+      vsrcs[i]  = drep->bound[bound-1].VSet[vs-1].sets[i].ivsrc;
     }
     *names = vnames;
     *ranks = vranks;
+    *ivsrc = vsrcs;
   }
   
   return GEM_SUCCESS;

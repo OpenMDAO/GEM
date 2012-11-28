@@ -7,8 +7,18 @@ LDIR  = $(GEM_BLOC)/lib
 VPATH = $(ODIR)
 
 OBJS  = attribute.o base.o brep.o drep.o memory.o model.o \
-	fillArea.o interp.o prmCfit.o prmGrid.o prmUV.o
+	fillArea.o approx.o prmCfit.o prmGrid.o prmUV.o
 
+
+default:	$(LDIR)/triDiscrete.so $(LDIR)/libgem.a
+
+$(LDIR)/triDiscrete.so:	triDiscrete.o
+	-rm $(LDIR)/triDiscrete.so
+	$(CCOMP) $(SOFLGS) -o $(LDIR)/triDiscrete.so $(ODIR)/triDiscrete.o
+
+triDiscrete.o:	triDiscrete.c
+	$(CCOMP) -c $(COPTS) $(DEFINE) -I../include triDiscrete.c \
+		-o $(ODIR)/triDiscrete.o
 
 $(LDIR)/libgem.a:	$(OBJS)
 	-rm $(LDIR)/libgem.a

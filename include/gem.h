@@ -15,7 +15,6 @@
 
 /* Magic Numbers */
 
-#define GEM_MCONN        55555
 #define GEM_MCONTEXT     66666
 #define GEM_MMODEL       77777
 #define GEM_MBREP        88888
@@ -59,6 +58,7 @@
 #define GEM_ASSEMBLY      -331
 #define GEM_BADNAME       -332
 #define GEM_UNSUPPORTED   -333
+#define GEM_BADMETHOD     -334
 
 
 /* Topologcal/Attribute Entity Types */
@@ -283,6 +283,11 @@ extern int
 gem_getObject(void *gemObj,             /* (in)  GEM Object pointer */
               int  *otype,              /* (out) object type */
               int  *nattr);             /* (out) number of attributes */
+
+
+/* return a string based on the return code */
+extern /*@observer@*/ const char *
+gem_errorString(int code);		/* (in)  return code from GEM function */
 
 
 /* free allocated GEM memory */
