@@ -2110,12 +2110,11 @@ gemTesselDRep(PyObject* module, PyObject* args)
 static PyObject*
 gemGetTessel(PyObject* module, PyObject* args)
 {
-    PyObject  *result, *xyz_nd, *uv_nd, *conn_nd;
+    PyObject  *result, *xyz_nd, *tri_nd;
     LONG      longDRep;
-    int       status, ibrep, iface, npts, *iptr, i;
-    double    *xyz, *uv;
+    int       status, ibrep, iface, npts, *iptr, i, ntris, *tris;
+    double    *xyz;
     gemDRep   *drep;
-    gemConn   *conn;
     gemPair   bface;
     int       rank;
     npy_intp  dims[2];
@@ -2135,7 +2134,7 @@ gemGetTessel(PyObject* module, PyObject* args)
     /* execute the GEM call */
     bface.BRep  = ibrep;
     bface.index = iface;   /* iface */
-    status = gem_getTessel(drep, bface, &npts, &xyz, &uv, &conn);
+    status = gem_getTessel(drep, bface, &ntris, &npts, &tris, &xyz);
     if (status != GEM_SUCCESS) {
         THROW_EXCEPTION(status, gem.getTessel);
     }
@@ -2148,31 +2147,15 @@ gemGetTessel(PyObject* module, PyObject* args)
     memcpy(((PyArrayObject*)(xyz_nd))->data, (void*)xyz, 3*npts*sizeof(double));
 
     rank    = 2;
-    dims[0] = npts;
-    dims[1] = 2;
-    uv_nd   = PyArray_SimpleNew(rank, dims, NPY_DOUBLE);
-    memcpy(((PyArrayObject*)(uv_nd))->data, (void*)uv, 2*npts*sizeof(double));
-
-    rank    = 2;
-    dims[0] = conn->nTris;
-    dims[1] = 6;
-    conn_nd = PyArray_SimpleNew(rank, dims, NPY_INT);
-    iptr    = (int*)PyArray_DATA(conn_nd);
-
-    for (i = 0; i < dims[0]; i++) {
-        iptr[6*i  ] = conn->Tris[3*i  ];
-        iptr[6*i+1] = conn->Tris[3*i+1];
-        iptr[6*i+2] = conn->Tris[3*i+2];
-        iptr[6*i+3] = conn->tNei[3*i  ];
-        iptr[6*i+4] = conn->tNei[3*i+1];
-        iptr[6*i+5] = conn->tNei[3*i+2];
-    }
+    dims[0] = ntris;
+    dims[1] = 3;
+    tri_nd   = PyArray_SimpleNew(rank, dims, NPY_INT);
+    memcpy(((PyArrayObject*)(tri_nd))->data, (void*)tris, 3*ntris*sizeof(int));
 
     /* return the result */
-    result = PyTuple_New(3);
-    PyTuple_SetItem(result, 0,  xyz_nd);
-    PyTuple_SetItem(result, 1,   uv_nd);
-    PyTuple_SetItem(result, 2, conn_nd);
+    result = PyTuple_New(2);
+    PyTuple_SetItem(result, 0, tri_nd);
+    PyTuple_SetItem(result, 1, xyz_nd);
     return result;
 }
 

@@ -325,46 +325,17 @@ class PygemTestCase(unittest.TestCase):
         gem.tesselDRep(myDRep, 0, 0, 0, 0)
 
         iface = 1
-        xyzArray, uvArray, connArray = gem.getTessel(myDRep, 1, 1)
+        triArray, xyzArray = gem.getTessel(myDRep, 1, 1)
 
         npnt = (xyzArray.shape)[0]
-        ntri = (connArray.shape)[0]
+        ntri = (triArray.shape)[0]
 
         # make sure that triangle pointers are consistent
         for itri in range(1, ntri+1):
-            for iside in [3, 4, 5]:
-                jtri = connArray[itri-1,iside]
-                if (jtri > 0):
-                    for jside in [3, 4, 5]:
-                        if (connArray[jtri-1,jside] == itri):
-                            self.assertEqual(connArray[itri-1, (iside+1)%3],
-                                             connArray[jtri-1, (jside+2)%3],
-                                             "itri=%d, jtri=%d" % (itri, jtri))
-                            self.assertEqual(connArray[itri-1, (iside+2)%3],
-                                             connArray[jtri-1, (jside+1)%3],
-                                             "itri=%d, jtri=%d" % (itri, jtri))
-                            break
-
-        # make sure all triangles normals (in UV) point in same direction
-        itri  = 1
-        u0    = uvArray[connArray[itri-1,0]-1,0]
-        v0    = uvArray[connArray[itri-1,0]-1,1]
-        u1    = uvArray[connArray[itri-1,1]-1,0]
-        v1    = uvArray[connArray[itri-1,1]-1,1]
-        u2    = uvArray[connArray[itri-1,2]-1,0]
-        v2    = uvArray[connArray[itri-1,2]-1,1]
-        area1 = (u1 - u0) * (v2 - v0) - (v1 - v0) * (u2 - u0)
-
-        for itri in range(2, ntri+1):
-            u0   = uvArray[connArray[itri-1,0]-1,0]
-            v0   = uvArray[connArray[itri-1,0]-1,1]
-            u1   = uvArray[connArray[itri-1,1]-1,0]
-            v1   = uvArray[connArray[itri-1,1]-1,1]
-            u2   = uvArray[connArray[itri-1,2]-1,0]
-            v2   = uvArray[connArray[itri-1,2]-1,1]
-            area = (u1 - u0) * (v2 - v0) - (v1 - v0) * (u2 - u0)
-
-            self.assertTrue(area*area1 >= 0, "itri=%d" % itri)
+            for iside in [0, 1, 2]:
+                jtri = triArray[itri-1,iside]
+                if not ((jtri > 0) and (jtri <= npnt)):
+                    self.fail('jtri not in (0 to %d)' % npnt)
 
         gem.destroyDRep(myDRep)
         gem.releaseModel(myModel)
