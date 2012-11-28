@@ -13,3 +13,4 @@ GLIBS  = -L/usr/X11/lib -lGLU -lGL -lX11 -lXext -lpthread -framework IOKit -fram
 endif
 SHEXT  = SO
 EXPRTS = -u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp
+SOFLGS = -bundle -undefined dynamic_lookup

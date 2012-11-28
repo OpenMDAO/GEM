@@ -40,3 +40,11 @@ gem_kernelInit()
 
   return CAPRI_SUCCESS;
 }
+
+
+/*@null@*/ const char *
+gem_kernelError(int code)
+{
+  if ((code >= 0) || (code < -99)) return NULL;
+  return gi_uErrorString(code);
+}

@@ -1,4 +1,4 @@
-			GEM REVISION 0.50 DISTRIBUTION
+			GEM REVISION 0.51 DISTRIBUTION
 		  	Geometry Environment for MDAO
 
 

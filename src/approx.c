@@ -1,7 +1,7 @@
 /*
  *      GEM: Geometry Environment for MDAO frameworks
  *
- *             DRep Interpolation functions
+ *             DRep Spline Approximate functions
  *
  *      Copyright 2011-2012, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
@@ -693,9 +693,9 @@ again:
 }
 
 
-static int gem_Int1DFit(int nrank, int tr0, int tr1, int npts, 
-                        /*@null@*/ double *tx, double *values, double tol, 
-                        gemInt1D *interp)
+static int gem_Aprx1DFit(int nrank, int tr0, int tr1, int npts,
+                         /*@null@*/ double *tx, double *values, double tol, 
+                         gemAprx1D *interp)
 {
   int    i, j, stat, nt, ntx, ntm = 0, periodic = 11;
   double sq, rmserr, maxerr, *r, *coeff, *ts;
@@ -879,9 +879,9 @@ fill:
 
 
 int gem_Interp1DFit(int nrank, int npts, /*@null@*/ double *tx, double *values, 
-                    double tol, gemInt1D *interp)
+                    double tol, gemAprx1D *interp)
 {
-  return gem_Int1DFit(nrank, 0, nrank, npts, tx, values, tol, interp);
+  return gem_Aprx1DFit(nrank, 0, nrank, npts, tx, values, tol, interp);
 }
 
 
@@ -938,7 +938,7 @@ gem_triFill(int npts, int ntris, int *tris, prmTri *vtris)
 
 
 int gem_Interp2DFit(int nrank, int npts, double *uvx, double *values, 
-                    int ntris, int *tris, double tol, gemInt2D *interp)
+                    int ntris, int *tris, double tol, gemAprx2D *interp)
 {
   int    i, j, k, nneg, maxsize, stat, nux, nvx, nu, num, nv = 0, nvm = 0;
   int    iv0, iv1, iv2, periodic;
@@ -1136,7 +1136,7 @@ int gem_Interp2DFit(int nrank, int npts, double *uvx, double *values,
 }
 
 
-int gem_Interpolate1D(gemInt1D interp, double tx, double *sv,
+int gem_Interpolate1D(gemAprx1D interp, double tx, double *sv,
                       /*@null@*/ double *dt1, /*@null@*/ double *dt2)
 {
   int    i, nrank;
@@ -1164,7 +1164,7 @@ int gem_Interpolate1D(gemInt1D interp, double tx, double *sv,
 }
 
 
-int gem_Interpolate2D(gemInt2D interp, double *uvx, double *sv,
+int gem_Interpolate2D(gemAprx2D interp, double *uvx, double *sv,
                       /*@null@*/ double *du,  /*@null@*/ double *dv,
                       /*@null@*/ double *duu, /*@null@*/ double *duv,
                       /*@null@*/ double *dvv)
@@ -1317,29 +1317,29 @@ int gem_Interpolate2D(gemInt2D interp, double *uvx, double *sv,
 }
 
 
-int gem_Int1DFree(gemInt1D *interp)
+int gem_Aprx1DFree(gemAprx1D *approx)
 {
-  if (interp->interp != NULL) gem_free(interp->interp);
-  if (interp->tmap   != NULL) gem_free(interp->tmap);
-  interp->interp = NULL;
-  interp->tmap   = NULL;
+  if (approx->interp != NULL) gem_free(approx->interp);
+  if (approx->tmap   != NULL) gem_free(approx->tmap);
+  approx->interp = NULL;
+  approx->tmap   = NULL;
 
   return GEM_SUCCESS;
 }
 
 
-int gem_Int2DFree(gemInt2D *interp)
+int gem_Aprx2DFree(gemAprx2D *approx)
 {
-  if (interp->interp != NULL) gem_free(interp->interp);
-  if (interp->uvmap  != NULL) gem_free(interp->uvmap);
-  interp->interp = NULL;
-  interp->uvmap  = NULL;
+  if (approx->interp != NULL) gem_free(approx->interp);
+  if (approx->uvmap  != NULL) gem_free(approx->uvmap);
+  approx->interp = NULL;
+  approx->uvmap  = NULL;
 
   return GEM_SUCCESS;
 }
 
 
-int gem_InvInterpolate1D(gemInt1D interp, double *sv, double *t)
+int gem_InvInterpolate1D(gemAprx1D interp, double *sv, double *t)
 {
   double mt, ntx;
 
@@ -1355,7 +1355,7 @@ int gem_InvInterpolate1D(gemInt1D interp, double *sv, double *t)
 }
 
 
-int gem_InvInterpolate2D(gemInt2D interp, double *sv, double *uv)
+int gem_InvInterpolate2D(gemAprx2D interp, double *sv, double *uv)
 {
   int    nrank, nux, nvx;
   double uvx[2], *tmp;

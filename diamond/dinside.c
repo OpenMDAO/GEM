@@ -19,23 +19,50 @@
 int
 gem_kernelInside(gemDRep *drep, int bound, int vs, double *in)
 {
-  int      i, j, np, ibrep, iface, stat;
+  int      i, j, k, ibrep, iface, stat;
   gemModel *mdl;
   gemBRep  *brep;
   ego      face;
   
+  if (drep->bound[bound-1].VSet[vs-1].quilt == NULL) return GEM_NOTPARAMBND;
   mdl = drep->model;
   
-  for (np = i = 0; i < drep->bound[bound-1].VSet[vs-1].nFaces; i++) {
-    ibrep = drep->bound[bound-1].VSet[vs-1].faces[i].index.BRep;
-    iface = drep->bound[bound-1].VSet[vs-1].faces[i].index.index;
-    brep  = mdl->BReps[ibrep-1];
-    face  = (ego) brep->body->faces[iface-1].handle.ident.ptr;
-    for (j = 0; j < drep->bound[bound-1].VSet[vs-1].faces[i].npts; j++, np++) {
-      stat = EG_inFace(face, &drep->bound[bound-1].VSet[vs-1].faces[i].uv[2*j]);
-      if (stat < EGADS_SUCCESS) return stat;
-      in[np] = stat;
+  /* do we have multiple faces in the Vset? */
+  for (k = j = 0; j < drep->bound[bound-1].VSet[vs-1].quilt->nGpts; j++) {
+    i = j;
+    if (drep->bound[bound-1].VSet[vs-1].quilt->geomIndices != NULL)
+      i = drep->bound[bound-1].VSet[vs-1].quilt->geomIndices[j] - 1;
+    if (drep->bound[bound-1].VSet[vs-1].quilt->points[i].nFaces != 1) {
+      k++;
+      break;
     }
+  }
+  
+  if (k == 0) {
+    
+    /* a single face */
+    for (j = 0; j < drep->bound[bound-1].VSet[vs-1].quilt->nGpts; j++) {
+      i = j;
+      if (drep->bound[bound-1].VSet[vs-1].quilt->geomIndices != NULL)
+        i = drep->bound[bound-1].VSet[vs-1].quilt->geomIndices[j] - 1;
+      if (drep->bound[bound-1].VSet[vs-1].quilt->points[i].nFaces > 2) {
+        k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.multi[0]-1;
+      } else {
+        k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.faces[0]-1;
+      }
+      ibrep = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.BRep;
+      iface = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.index;
+      brep  = mdl->BReps[ibrep-1];
+      face  = (ego) brep->body->faces[iface-1].handle.ident.ptr;
+      stat  = EG_inFace(face, drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].uv);
+      if (stat < EGADS_SUCCESS) return stat;
+      in[j] = stat;
+    }
+    
+  } else {
+
+    /* multiple faces -- find appropriate one */
+    
   }
 
   return GEM_SUCCESS;

@@ -79,7 +79,8 @@ gem_kernelTessel(gemBody *body, double angle, double mxside, double sag,
 
 /* evaluation */
 extern int
-gem_kernelEval(gemDRep *drep, int bound, int vs, int iface, int inv);
+gem_kernelEval(gemDRep *drep, int bound, int vs, int gflg, int inv,
+               double **eval);
 
 /* get derivatives */
 extern int
@@ -92,3 +93,7 @@ gem_kernelCurvature(gemDRep *drep, int bound, int vs, double *data);
 /* get In/Out */
 extern int
 gem_kernelInside(gemDRep *drep, int bound, int vs, double *data);
+
+/* get error string */
+extern /*@null@*/ /*@observer@*/ const char *
+gem_kernelError(int code);

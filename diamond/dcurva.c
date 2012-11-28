@@ -138,25 +138,32 @@ gem_kernelCurvCalc(double *results, int sense, double *curva)
 int
 gem_kernelCurvature(gemDRep *drep, int bound, int vs, double *curv)
 {
-  int      i, j, np, ibrep, iface, stat;
+  int      i, j, k, ibrep, iface, stat;
   double   results[18];
   gemModel *mdl;
   gemBRep  *brep;
   ego      face;
-  
+
+  if (drep->bound[bound-1].VSet[vs-1].quilt == NULL) return GEM_NOTPARAMBND;
   mdl = drep->model;
   
-  for (np = i = 0; i < drep->bound[bound-1].VSet[vs-1].nFaces; i++) {
-    ibrep = drep->bound[bound-1].VSet[vs-1].faces[i].index.BRep;
-    iface = drep->bound[bound-1].VSet[vs-1].faces[i].index.index;
+  for (j = 0; j < drep->bound[bound-1].VSet[vs-1].quilt->nGpts; j++) {
+    i = j;
+    if (drep->bound[bound-1].VSet[vs-1].quilt->geomIndices != NULL)
+      i = drep->bound[bound-1].VSet[vs-1].quilt->geomIndices[j] - 1;
+    if (drep->bound[bound-1].VSet[vs-1].quilt->points[i].nFaces > 2) {
+      k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.multi[0]-1;
+    } else {
+      k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.faces[0]-1;
+    }
+    ibrep = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.BRep;
+    iface = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.index;
     brep  = mdl->BReps[ibrep-1];
     face  = (ego) brep->body->faces[iface-1].handle.ident.ptr;
-    for (j = 0; j < drep->bound[bound-1].VSet[vs-1].faces[i].npts; j++, np++) {
-      stat = EG_evaluate(face, &drep->bound[bound-1].VSet[vs-1].faces[i].uv[2*j],
-                         results);
-      if (stat != EGADS_SUCCESS) return stat;
-      gem_kernelCurvCalc(results, face->mtype, &curv[8*np]);
-    }
+    stat  = EG_evaluate(face, drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].uv,
+                        results);
+    if (stat != EGADS_SUCCESS) return stat;
+    gem_kernelCurvCalc(results, face->mtype, &curv[8*j]);
   }
 
   return GEM_SUCCESS;
