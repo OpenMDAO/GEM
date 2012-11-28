@@ -5,14 +5,24 @@ IDIR = $(SDIR)\..\include
 ODIR = $(GEM_BLOC)\obj
 
 OBJS = attribute.obj base.obj brep.obj drep.obj memory.obj model.obj \
-	fillArea.obj interp.obj prmCfit.obj prmGrid.obj prmUV.obj
+	fillArea.obj approx.obj prmCfit.obj prmGrid.obj prmUV.obj
 
-default:	start ..\lib\gem.lib end
+default:	start ..\lib\triDiscrete.dll ..\lib\gem.lib end
 
 start:
 	cd $(ODIR)
 	xcopy $(SDIR)\*.c   /Q /Y
 	xcopy $(SDIR)\*.h   /Q /Y
+	xcopy $(SDIR)\*.def /Q /Y
+
+triDiscrete.obj: triDiscrete.c
+        cl /c $(COPTS) $(DEFINS) /I$(IDIR) triDiscrete.c
+
+..\lib\triDiscrete.dll:    triDiscrete.obj
+        -del ..\lib\triDiscrete.dll ..\lib\triDiscrete.lib ..\lib\triDiscrete.exp
+        link /out:..\lib\triDiscrete.dll /dll /def:method.def triDiscrete.obj 
+        $(MCOMP) /manifest ..\lib\triDiscrete.dll.manifest \
+                /outputresource:..\lib\triDiscrete.dll;2
 
 ..\lib\gem.lib:	$(OBJS)
 	-del ..\lib\gem.lib
@@ -29,10 +39,11 @@ end:
 
 clean:
 	cd $(ODIR)
-	-del $(OBJS)
+	-del $(OBJS) triDiscrete.obj
 	cd $(SDIR)
 
 cleanall:
 	cd $(ODIR)
-	-del ..\lib\gem.lib $(OBJS)
+        -del ..\lib\triDiscrete.dll ..\lib\triDiscrete.lib ..\lib\triDiscrete.exp
+	-del ..\lib\gem.lib $(OBJS) triDiscrete.obj
 	cd $(SDIR)

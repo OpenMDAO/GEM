@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
   
   if (status == GEM_SUCCESS) {
 
-    status = gv_init("                Test Code", mtflag, 2, keys, types, lims,
+    status = gv_init("                Test Code", mtflag, 0, keys, types, lims,
                      titles, focus);
     printf("return from gv_init = %d\n", status);
   }
@@ -197,11 +197,10 @@ void gvdata( int ngraphics, GvGraphic* graphic[] )
   GvColor  color;
   GvObject *object;
   int      status, nnode, nedge, nloop, nface, nshell, nattr;
-  int      i, j, k, m, type, npts;
-  double   box[6], *points, *uvf;
+  int      i, j, k, m, type, npts, ntris, *tris;
+  double   box[6], *points;
   char     title[16];
   gemPair  bface;
-  gemConn  *conn;
 
   printf("in  gvdata - n = %d\n", ngraphics);
   list = graphic;
@@ -214,7 +213,7 @@ void gvdata( int ngraphics, GvGraphic* graphic[] )
 
     for (j = 0; j < nface; j++) {
       bface.index = j+1;
-      status = gem_getTessel(DRep, bface, &npts, &points, &uvf, &conn);
+      status = gem_getTessel(DRep, bface, &ntris, &npts, &tris, &points);
       if (status != GEM_SUCCESS)
         printf(" BRep #%d: gem_getTessel status = %d\n", k+1, status);
       color.red   = 1.0;
@@ -233,15 +232,15 @@ void gvdata( int ngraphics, GvGraphic* graphic[] )
         graphic[i]->back.blue  = 0.5;
         graphic[i]->number     = 1;
         object = graphic[i]->object;
-        if ((npts <= 0) || (conn->nTris <= 0)) {
+        if ((npts <= 0) || (ntris <= 0)) {
           object->length = 0;
         } else {
           graphic[i]->ddata = points;
-          object->length = conn->nTris;
-          object->type.distris.index = (int *) malloc(3*conn->nTris*sizeof(int));
+          object->length = ntris;
+          object->type.distris.index = (int *) malloc(3*ntris*sizeof(int));
           if (object->type.distris.index != NULL)
-            for (m = 0; m < 3*conn->nTris; m++)
-              object->type.distris.index[m] = conn->Tris[m]-1;
+            for (m = 0; m < 3*ntris; m++)
+              object->type.distris.index[m] = tris[m]-1;
         }
       }
       i++;
@@ -250,41 +249,4 @@ void gvdata( int ngraphics, GvGraphic* graphic[] )
   printf("out gvdata - n = %d\n", i);
 }
 
-
-int
-gvscalar( int key, GvGraphic* graphic, int len, float* scalar )
-
-/*
- *  called to get scalar value for color rendering for graphics objects
- *
- *  key     - scalar index (from gv_init)
- *  graphic - the GvGraphic structure for scalar fill
- *  len     - len of scalar to be filled
- *  scalar  - scalar to be filled
- */
-{
-  int     i, status, npts;
-  double  *points, *uv;
-  gemPair bface;
-  gemConn *conn;
-
-  bface.BRep  = graphic->utype;
-  bface.index = graphic->uindex;
-  status = gem_getTessel(DRep, bface, &npts, &points, &uv, &conn);
-  if (status != GEM_SUCCESS)
-    printf(" BRep #%d: gem_getTessel = %d\n", bface.BRep, status);
-
-  if (npts != len) {
-    printf(" BRep#%d/Face #%d: Length mismatch in gvscalar: %d %d\n",
-           bface.BRep, bface.index, len, npts);
-    return 0;
-  }
-
-  if (key == 0) {
-    for (i = 0; i < len; i++) scalar[i] = uv[2*i  ];
-  } else {
-    for (i = 0; i < len; i++) scalar[i] = uv[2*i+1];
-  }
-  return 1;
-}
 

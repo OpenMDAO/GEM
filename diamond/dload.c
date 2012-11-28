@@ -637,7 +637,7 @@ int
 gem_kernelLoad(gemCntxt *gem_cntxt, /*@null@*/ char *server, 
                char *name, gemModel **model)
 {
-  int      i, j, len, stat, ibody, buildTo, builtTo, nBRep, ierror;
+  int      i, j, len, stat, ibody, buildTo, builtTo, nBRep;
   ego      obj, bobj;
   gemID    gid;
   gemModel *mdl, *prev;

@@ -18,74 +18,114 @@
 
 
 int
-gem_kernelEval(gemDRep *drep, int bound, int vs, int i, int inv)
+gem_kernelEval(gemDRep *drep, int bound, int vs, int gflg, int inv,
+               double **eval)
 {
-  int      j, np, ibrep, iface, vol, face, stat, *errs;
-  double   dum[3], *data;
+  int      i, j, k, np, ibrep, iface, vol, face, stat, *errs;
+  double   dum[3], *vals;
   gemModel *mdl;
   gemBRep  *brep;
 
+  if (drep->bound[bound-1].VSet[vs-1].quilt == NULL) return GEM_NOTPARAMBND;
   mdl = drep->model;
-  np  = drep->bound[bound-1].VSet[vs-1].faces[i].npts;
-  if (inv == 0) {
-    data = (double *) gem_allocate(3*np*sizeof(double));
-    if (data == NULL) return GEM_ALLOC;
+  if (gflg == 1) {
+    np = drep->bound[bound-1].VSet[vs-1].quilt->nGpts;
   } else {
-    data = (double *) gem_allocate(2*np*sizeof(double));
-    if (data == NULL) return GEM_ALLOC;
+    np = drep->bound[bound-1].VSet[vs-1].quilt->nVerts;
   }
-
-  stat = gi_qBegin();
-  if (stat != CAPRI_SUCCESS) {
-    gem_free(data);
-    return stat;
+  if (inv == 0) {
+    vals = (double *) gem_allocate(3*np*sizeof(double));
+  } else {
+    vals = (double *) gem_allocate(2*np*sizeof(double));
   }
+  if (vals == NULL) return GEM_ALLOC;
 
-  ibrep = drep->bound[bound-1].VSet[vs-1].faces[i].index.BRep;
-  iface = drep->bound[bound-1].VSet[vs-1].faces[i].index.index;
-  brep  = mdl->BReps[ibrep-1];
-  vol   = brep->body->faces[iface-1].handle.index;
-  face  = brep->body->faces[iface-1].handle.ident.tag;
-  for (j = 0; j < drep->bound[bound-1].VSet[vs-1].faces[i].npts; j++)
-    if (inv == 0) {
-      data[3*j  ] = 0.0;
-      data[3*j+1] = 0.0;
-      data[3*j+2] = 0.0;
-      stat = gi_qPointOnFace(vol, face, 
-                             &drep->bound[bound-1].VSet[vs-1].faces[i].uv[2*j],
-                             &data[3*j], 0, NULL, NULL, NULL, NULL, NULL);
-      if (stat < CAPRI_SUCCESS) 
-        printf(" Evals Error: %d gi_qPointOnFace = %d!\n", j+1, stat);
+  /* do we have multiple faces in the Vset? */
+  for (k = j = 0; j < np; j++) {
+    i = j;
+    if (gflg == 1) {
+      if (drep->bound[bound-1].VSet[vs-1].quilt->geomIndices != NULL)
+        i = drep->bound[bound-1].VSet[vs-1].quilt->geomIndices[j] - 1;
     } else {
-      data[2*j  ] = -1.e38;
-      data[2*j+1] = -1.e38;
-      stat = gi_qNearestOnFace(vol, face,
-                               &drep->bound[bound-1].VSet[vs-1].faces[i].xyz[3*j],
-                               &data[2*j], dum);
-      if (stat < CAPRI_SUCCESS) 
-        printf(" Evals Error: %d gi_qNearestOnFace = %d!\n", j+1, stat);
+      if (drep->bound[bound-1].VSet[vs-1].quilt->dataIndices != NULL)
+        i = drep->bound[bound-1].VSet[vs-1].quilt->dataIndices[j] - 1;
+    }
+    if (drep->bound[bound-1].VSet[vs-1].quilt->points[i].nFaces != 1) {
+      k++;
+      break;
+    }
+  }
+
+  if ((k == 0) || (inv == 0)) {
+    
+    /* a single face/evaluation -- use the uvs stored */
+    stat = gi_qBegin();
+    if (stat != CAPRI_SUCCESS) {
+      gem_free(vals);
+      return stat;
+    }
+
+    for (j = 0; j < np; j++) {
+      i = j;
+      if (gflg == 1) {
+        if (drep->bound[bound-1].VSet[vs-1].quilt->geomIndices != NULL)
+          i = drep->bound[bound-1].VSet[vs-1].quilt->geomIndices[j] - 1;
+      } else {
+        if (drep->bound[bound-1].VSet[vs-1].quilt->dataIndices != NULL)
+          i = drep->bound[bound-1].VSet[vs-1].quilt->dataIndices[j] - 1;
+      }
+      if (drep->bound[bound-1].VSet[vs-1].quilt->points[i].nFaces > 2) {
+        k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.multi[0]-1;
+      } else {
+        k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.faces[0]-1;
+      }
+      ibrep = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.BRep;
+      iface = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.index;
+      vol   = brep->body->faces[iface-1].handle.index;
+      face  = brep->body->faces[iface-1].handle.ident.tag;
+      if (inv == 0) {
+        vals[3*j  ] = 0.0;
+        vals[3*j+1] = 0.0;
+        vals[3*j+2] = 0.0;
+        stat = gi_qPointOnFace(vol, face, 
+                               drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].uv,
+                               &vals[3*j], 0, NULL, NULL, NULL, NULL, NULL);
+        if (stat < CAPRI_SUCCESS) 
+          printf(" Evals Error: %d gi_qPointOnFace = %d!\n", j+1, stat);
+      } else {
+        vals[2*j  ] = -1.e38;
+        vals[2*j+1] = -1.e38;
+        stat = gi_qNearestOnFace(vol, face,
+                                 drep->bound[bound-1].VSet[vs-1].quilt->points[i].xyz,
+                                 &vals[2*j], dum);
+        if (stat < CAPRI_SUCCESS) 
+          printf(" Evals Error: %d gi_qNearestOnFace = %d!\n", j+1, stat);
+      }
+    }
+    stat = gi_qEnd(&errs);
+    if (stat < CAPRI_SUCCESS) {
+      gem_free(vals);
+      return stat;
+    }
+    if (stat != np) {
+      gi_free(errs);
+      gem_free(vals);
+      return CAPRI_COMMERR;
     }
   
-  stat = gi_qEnd(&errs);
-  if (stat < CAPRI_SUCCESS) {
-    gem_free(data);
-    return stat;
-  }
-  if (stat != drep->bound[bound-1].VSet[vs-1].faces[i].npts) {
+    for (j = 0; j < stat; j++)
+      if (errs[j] != CAPRI_SUCCESS)
+        printf(" Evals Warning on %d: %d\n", j+1, errs[j]);
     gi_free(errs);
-    gem_free(data);
-    return CAPRI_COMMERR;
-  }
-  
-  for (j = 0; j < stat; j++)
-    if (errs[j] != CAPRI_SUCCESS)
-      printf(" Evals Warning on %d: %d\n", j+1, errs[j]);
-  gi_free(errs);
 
-  if (inv == 0) {
-    drep->bound[bound-1].VSet[vs-1].faces[i].xyz = data;
+    *eval = vals;
+
   } else {
-    drep->bound[bound-1].VSet[vs-1].faces[i].uv  = data;
+    
+    /* multiple faces in the Vset -- must find face for invEval! */
+    
+    
+    *eval = vals;
   }
   return GEM_SUCCESS;
 }

@@ -1,2 +1,0 @@
-#
-lint -I../include *.c -exportlocal -nestcomment -uniondef

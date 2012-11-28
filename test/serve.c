@@ -40,15 +40,13 @@
 
 static int makeTess(int flag)
 {
-  int     i, j, k, n, status, type, nnode, nedge, nloop, nface, nshell;
-  int     ii, head, nattr, npts, attrs, itri, nseg, *segs, igprim, nitem;
-  int     nodes[2], faces[2];
+  int     i, j, k, status, type, nnode, nedge, nloop, nface, nshell, ntris;
+  int     head, nattr, npts, attrs, itri, nseg, *segs, igprim, nitem, *tris;
   float   box[6], focus[4], color[3], *xyzs;
-  double  bx[6], tlimit[2], *points, *uvf, size;
+  double  bx[6], *points, size;
   char    gpname[33];
   gemDRep *DRep;
   gemPair bface;
-  gemConn *conn;
   wvData  items[5];
 
   if (flag != 0) wv_removeAll(cntxt);
@@ -101,7 +99,7 @@ static int makeTess(int flag)
 
     for (j = 0; j < nface; j++) {
       bface.index = j+1;
-      status = gem_getTessel(DRep, bface, &npts, &points, &uvf, &conn);
+      status = gem_getTessel(DRep, bface, &ntris, &npts, &tris, &points);
       if (status != GEM_SUCCESS)
         printf(" BRep #%d: gem_getTessel status = %d\n", i+1, status);
       sprintf(gpname, "Body %d Face %d", bface.BRep, bface.index);
@@ -110,7 +108,7 @@ static int makeTess(int flag)
       wv_setData(WV_REAL64, npts, points, WV_VERTICES, &items[0]);
       wv_adjustVerts(&items[0], focus);
       /* triangles */
-      wv_setData(WV_INT32, 3*conn->nTris, conn->Tris, WV_INDICES, &items[1]);
+      wv_setData(WV_INT32, 3*ntris, tris, WV_INDICES, &items[1]);
       /* triangle colors */
       color[0] = 1.0;
       color[1] = 0.0;
@@ -119,19 +117,15 @@ static int makeTess(int flag)
       wv_setData(WV_REAL32, 1, color, WV_COLORS, &items[2]);
       nitem = 3;
       /* triangle sides (segments) */
-      for (nseg = itri = 0; itri < conn->nTris; itri++)
-        for (k = 0; k < 3; k++) 
-          if (conn->tNei[3*itri+k] < itri+1) nseg++;
-      segs = (int *) malloc(2*nseg*sizeof(int));
+      segs = (int *) malloc(6*ntris*sizeof(int));
       if (segs != NULL) {
         nitem = 5;
-        for (nseg = itri = 0; itri < conn->nTris; itri++)
-          for (k = 0; k < 3; k++)
-            if (conn->tNei[3*itri+k] < itri+1) {
-              segs[2*nseg  ] = conn->Tris[3*itri+(k+1)%3];
-              segs[2*nseg+1] = conn->Tris[3*itri+(k+2)%3];
-              nseg++;
-            }
+        for (nseg = itri = 0; itri < ntris; itri++)
+          for (k = 0; k < 3; k++) {
+            segs[2*nseg  ] = tris[3*itri+(k+1)%3];
+            segs[2*nseg+1] = tris[3*itri+(k+2)%3];
+            nseg++;
+          }
         wv_setData(WV_INT32, 2*nseg, segs, WV_LINDICES, &items[3]);
         free(segs);
         /* segment colors */
@@ -142,51 +136,36 @@ static int makeTess(int flag)
       }
 
       /* make graphic primitive */
-      igprim = wv_addGPrim(cntxt, gpname, WV_TRIANGLE, attrs, nitem, items);
-      if (igprim >= 0) {
-        /* make line width 1 */
-        cntxt->gPrims[igprim].lWidth = 1.0;
-      } else {
-        printf(" addGPrim for %s = %d\n", gpname, igprim);
+      if (cntxt != NULL) {
+        igprim = wv_addGPrim(cntxt, gpname, WV_TRIANGLE, attrs, nitem, items);
+        if (igprim >= 0) {
+          /* make line width 1 */
+          if (cntxt->gPrims != NULL) cntxt->gPrims[igprim].lWidth = 1.0;
+        } else {
+          printf(" addGPrim for %s = %d\n", gpname, igprim);
+        }
       }
     }
 
     for (j = 0; j < nedge; j++) {
       /* name and attributes */
+      bface.index = j+1;
       sprintf(gpname, "Body %d Edge %d", bface.BRep, j+1);
       attrs  = WV_ON;
-      status = gem_getEdge(BReps[i], j+1, tlimit, nodes, faces, &nattr);
+      status = gem_getDiscrete(DRep, bface, &npts, &points);
       if (status != GEM_SUCCESS) continue;
-      bface.index = faces[0];
-      status = gem_getTessel(DRep, bface, &npts, &points, &uvf, &conn);
-      if (status != GEM_SUCCESS) continue;
-      for (nseg = itri = 0; itri < conn->nTris; itri++)
-        for (k = 0; k < 3; k++)
-          if (conn->tNei[3*itri+k] < 0) {
-            n = -conn->tNei[3*itri+k];
-            if (conn->sides[n-1].edge == j+1) nseg++;
-          }
-      if (nseg == 0) continue;
-      xyzs = (float *) malloc(6*nseg*sizeof(float));
+      if (npts < 2) continue;
+      head = npts - 1;
+      xyzs = (float *) malloc(6*head*sizeof(float));
       if (xyzs == NULL) continue;
-      for (head = nseg = itri = 0; itri < conn->nTris; itri++)
-        for (k = 0; k < 3; k++)
-          if (conn->tNei[3*itri+k] < 0) {
-            n = -conn->tNei[3*itri+k];
-            if (conn->sides[n-1].edge == j+1) {
-              if (conn->sides[n-1].t[0] == tlimit[1]) head = -(nseg+1);
-              ii = conn->Tris[3*itri+(k+1)%3]-1;
-              xyzs[6*nseg  ] = points[3*ii  ];
-              xyzs[6*nseg+1] = points[3*ii+1];
-              xyzs[6*nseg+2] = points[3*ii+2];
-              if (conn->sides[n-1].t[1] == tlimit[1]) head =   nseg+1;
-              ii = conn->Tris[3*itri+(k+2)%3]-1;
-              xyzs[6*nseg+3] = points[3*ii  ];
-              xyzs[6*nseg+4] = points[3*ii+1];
-              xyzs[6*nseg+5] = points[3*ii+2];
-              nseg++;
-            }
-          }
+      for (nseg = 0; nseg < head; nseg++) {
+        xyzs[6*nseg  ] = points[3*nseg  ];
+        xyzs[6*nseg+1] = points[3*nseg+1];
+        xyzs[6*nseg+2] = points[3*nseg+2];
+        xyzs[6*nseg+3] = points[3*nseg+3];
+        xyzs[6*nseg+4] = points[3*nseg+4];
+        xyzs[6*nseg+5] = points[3*nseg+5];
+      }
       /* vertices */
       wv_setData(WV_REAL32, 2*nseg, xyzs, WV_VERTICES, &items[0]);
       wv_adjustVerts(&items[0], focus);
@@ -197,13 +176,15 @@ static int makeTess(int flag)
       color[2] = 1.0;
       wv_setData(WV_REAL32, 1, color, WV_COLORS, &items[1]);
       /* make graphic primitive */
-      igprim = wv_addGPrim(cntxt, gpname, WV_LINE, attrs, 2, items);
-      if (igprim >= 0) {
-        /* make line width 2 */
-        cntxt->gPrims[igprim].lWidth = 1.5;
-        if (head != 0) wv_addArrowHeads(cntxt, igprim, 0.05, 1, &head);
-      } else {
-        printf(" addGPrim for %s = %d\n", gpname, igprim);
+      if (cntxt != NULL) {
+        igprim = wv_addGPrim(cntxt, gpname, WV_LINE, attrs, 2, items);
+        if (igprim >= 0) {
+          /* make line width 1.5 */
+          if (cntxt->gPrims != NULL) cntxt->gPrims[igprim].lWidth = 1.5;
+          if (head != 0) wv_addArrowHeads(cntxt, igprim, 0.05, 1, &head);
+        } else {
+          printf(" addGPrim for %s = %d\n", gpname, igprim);
+        }
       }
     }
 

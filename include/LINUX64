@@ -8,3 +8,4 @@ XLIBS  = -L/usr/X11R6/lib -lX11 -lpthread
 GLIBS  = -L/usr/X11R6/lib -lGLU -lGL -lX11 -lXext -lpthread
 DLINK  = -rdynamic
 SHEXT  = so
+SOFLGS = -shared

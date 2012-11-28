@@ -143,22 +143,23 @@ gem_kernelCurvCalc(double *results, int sense, double *curva)
 int
 gem_kernelCurvature(gemDRep *drep, int bound, int vs, double *curv)
 {
-  int      i, j, np, ibrep, iface, vol, face, stat, sense, *senses, *errs;
+  int      i, j, k, np, ibrep, iface, vol, face, stat, sense, *senses, *errs;
   double   dum[3], *results;
   gemModel *mdl;
   gemBRep  *brep;
 
-  results = (double *) gem_allocate(15*drep->bound[bound-1].VSet[vs-1].npts*
-                                    sizeof(double));
+  if (drep->bound[bound-1].VSet[vs-1].quilt == NULL) return GEM_NOTPARAMBND;
+  mdl = drep->model;
+
+  np      = drep->bound[bound-1].VSet[vs-1].quilt->nGpts;
+  results = (double *) gem_allocate(15*np*sizeof(double));
   if (results == NULL) return GEM_ALLOC;
-  senses  = (int *)    gem_allocate(   drep->bound[bound-1].VSet[vs-1].npts*
-                                    sizeof(int));
+  senses  = (int *)    gem_allocate(   np*sizeof(int));
   if (senses  == NULL) {
     gem_free(results);
     return GEM_ALLOC;
   }
 
-  mdl  = drep->model;
   stat = gi_qBegin();
   if (stat != CAPRI_SUCCESS) {
     gem_free(senses);
@@ -166,9 +167,17 @@ gem_kernelCurvature(gemDRep *drep, int bound, int vs, double *curv)
     return stat;
   }
 
-  for (np = i = 0; i < drep->bound[bound-1].VSet[vs-1].nFaces; i++) {
-    ibrep = drep->bound[bound-1].VSet[vs-1].faces[i].index.BRep;
-    iface = drep->bound[bound-1].VSet[vs-1].faces[i].index.index;
+  for (j = 0; j < np; j++) {
+    i = j;
+    if (drep->bound[bound-1].VSet[vs-1].quilt->geomIndices != NULL)
+      i = drep->bound[bound-1].VSet[vs-1].quilt->geomIndices[j] - 1;
+    if (drep->bound[bound-1].VSet[vs-1].quilt->points[i].nFaces > 2) {
+      k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.multi[0]-1;
+    } else {
+      k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.faces[0]-1;
+    }
+    ibrep = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.BRep;
+    iface = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.index;
     brep  = mdl->BReps[ibrep-1];
     vol   = brep->body->faces[iface-1].handle.index;
     face  = brep->body->faces[iface-1].handle.ident.tag;
@@ -178,17 +187,14 @@ gem_kernelCurvature(gemDRep *drep, int bound, int vs, double *curv)
       gem_free(results);
       return stat;
     }
-    for (j = 0; j < drep->bound[bound-1].VSet[vs-1].faces[i].npts; j++, np++) {
-      senses[np] = sense;
-      stat = gi_qPointOnFace(vol, face, 
-                             &drep->bound[bound-1].VSet[vs-1].faces[i].uv[2*j],
-                             dum, 2, &results[15*np], &results[15*np+3], 
-                             &results[15*np+6], &results[15*np+9], 
-                             &results[15*np+12]);
-      if (stat < CAPRI_SUCCESS) 
-        printf(" Curvature Error: %d/%d gi_qPointOnFace = %d!\n", 
-               i+1, j+1, stat);
-    }
+    senses[np] = sense;
+    stat = gi_qPointOnFace(vol, face, 
+                           drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].uv,
+                           dum, 2, &results[15*np], &results[15*np+3], 
+                           &results[15*np+6], &results[15*np+9], 
+                           &results[15*np+12]);
+    if (stat < CAPRI_SUCCESS) 
+      printf(" Curvature Error: %d/%d gi_qPointOnFace = %d!\n", i+1, j+1, stat);
   }
   
   stat = gi_qEnd(&errs);

@@ -395,3 +395,50 @@ gem_getObject(void *obj, int *otype, int *nattr)
 
   return GEM_SUCCESS;
 }
+
+
+/*@observer@*/ const char *
+gem_errorString(int code)
+{
+  const char *str;
+
+  str = gem_kernelError(code);
+  if (str != NULL) return str;
+
+  if (code == GEM_SUCCESS)       return "GEM: Success";
+  if (code == GEM_BADDREP)       return "GEM: Bad DRep Object";
+  if (code == GEM_BADFACEID)     return "GEM: Bad Face ID";
+  if (code == GEM_BADBOUNDINDEX) return "GEM: Bad Bound Index";
+  if (code == GEM_BADVSETINDEX)  return "GEM: Bad VertexSet Index";
+  if (code == GEM_BADRANK)       return "GEM: Bad Rank";
+  if (code == GEM_BADDSETNAME)   return "GEM: Bad DataSet Name";
+  if (code == GEM_MISSDISPLACE)  return "GEM: What is this and why is it here?";
+  if (code == GEM_NOTFOUND)      return "GEM: Not Found";
+  if (code == GEM_BADMODEL)      return "GEM: Bad Model Object";
+  if (code == GEM_BADCONTEXT)    return "GEM: Bad Context";
+  if (code == GEM_BADBREP)       return "GEM: Bad BRep Object";
+  if (code == GEM_BADINDEX)      return "GEM: Bad Index";
+  if (code == GEM_NOTCHANGED)    return "GEM: Not Changed";
+  if (code == GEM_ALLOC)         return "GEM: Memory Allocation Error";
+  if (code == GEM_BADTYPE)       return "GEM: Bad Type";
+  if (code == GEM_NULLVALUE)     return "GEM: NULL Value";
+  if (code == GEM_NULLNAME)      return "GEM: NULL Name";
+  if (code == GEM_NULLOBJ)       return "GEM: NULL Object";
+  if (code == GEM_BADOBJECT)     return "GEM: Bad Object";
+  if (code == GEM_WIREBODY)      return "GEM: Wire Body (Un)Expected";
+  if (code == GEM_SOLIDBODY)     return "GEM: Solid Body (Un)Expected";
+  if (code == GEM_NOTESSEL)      return "GEM: Not a Tessellation";
+  if (code == GEM_BADVALUE)      return "GEM: Bad Value";
+  if (code == GEM_DUPLICATE)     return "GEM: Duplicate";
+  if (code == GEM_BADINVERSE)    return "GEM: Bad Matrix Inverse";
+  if (code == GEM_NOTPARAMBND)   return "GEM: Bound has Not Been Paramaterized";
+  if (code == GEM_NOTCONNECT)    return "GEM: VertexSet is Not Connected";
+  if (code == GEM_NOTPARMTRIC)   return "GEM: Model is (Not) Parametric";
+  if (code == GEM_READONLYERR)   return "GEM: Read-Only Error";
+  if (code == GEM_FIXEDLEN)      return "GEM: Parameter is Fixed Length";
+  if (code == GEM_ASSEMBLY)      return "GEM: Assembly Error";
+  if (code == GEM_BADNAME)       return "GEM: Bad Name";
+  if (code == GEM_UNSUPPORTED)   return "GEM: Unsupported";
+
+  return "Unknown Error!";
+}
