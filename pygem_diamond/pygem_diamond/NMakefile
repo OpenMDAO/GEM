@@ -1,9 +1,9 @@
-#	NMakefile for pyRite
+#	NMakefile for pygem
 
 #
 #	targets for make
 #
-all	: pyRite.c
+all	: pygem.c
 	@echo "Making test\gem.pyd..."
 	-del test\gem.pyd
 	-rmdir /S /Q build 

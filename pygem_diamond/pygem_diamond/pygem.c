@@ -1,7 +1,7 @@
 /*
  ************************************************************************
  *                                                                      *
- * pyRite -- Python interface to the Geometry Environment for MDAO (GEM)*
+ * pygem -- Python interface to the Geometry Environment for MDAO (GEM)*
  *                                                                      *
  *            Written by John Dannenhoffer @ Syracuse University        *
  *                                                                      *

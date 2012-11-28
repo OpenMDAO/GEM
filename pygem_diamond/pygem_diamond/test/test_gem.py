@@ -1,10 +1,13 @@
 # test suite for gem.so
 
+import os
 import unittest
-import gem
+from pygem_diamond import gem
 import numpy
 
-class PyRiteTestCase(unittest.TestCase):
+sample_file = os.path.join(os.path.dirname(__file__), "sample.csm")
+
+class PygemTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -51,7 +54,7 @@ class PyRiteTestCase(unittest.TestCase):
     #       gem.terminate
     def test_LoadModel(self):
         myContext = gem.initialize()
-        myModel   = gem.loadModel(myContext, "sample.csm")
+        myModel   = gem.loadModel(myContext, sample_file)
 
         gem.setAttribute(myModel, "MODEL",  0, "s_attr", "model attribute")
         gem.setAttribute(myModel, "MODEL",  0, "i_attrs", (2222222, 3333333, 4444444, 5555555))
@@ -61,7 +64,7 @@ class PyRiteTestCase(unittest.TestCase):
         gem.releaseModel(myModel)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(copyModel)
-        self.assertEqual(filename, "sample.csm")
+        self.assertEqual(filename, sample_file)
         self.assertEqual(modeler,  "OpenCSM")
         self.assertEqual(uptodate,  1)
         self.assertEqual(nparam,   33)
@@ -97,7 +100,7 @@ class PyRiteTestCase(unittest.TestCase):
     #       gem.terminate
     def test_StaticModel(self):
         myContext = gem.initialize()
-        myModel   = gem.loadModel(myContext, "sample.csm")
+        myModel   = gem.loadModel(myContext, sample_file)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
 
@@ -141,7 +144,7 @@ class PyRiteTestCase(unittest.TestCase):
     #       gem.terminate
     def test_Branches(self):
         myContext = gem.initialize()
-        myModel   = gem.loadModel(myContext, "sample.csm")
+        myModel   = gem.loadModel(myContext, sample_file)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
 
@@ -190,7 +193,7 @@ class PyRiteTestCase(unittest.TestCase):
     #       gem.terminate
     def test_Parameters(self):
         myContext = gem.initialize()
-        myModel   = gem.loadModel(myContext, "sample.csm")
+        myModel   = gem.loadModel(myContext, sample_file)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
 
@@ -251,7 +254,7 @@ class PyRiteTestCase(unittest.TestCase):
     #       gem.terminate
     def test_BRep(self):
         myContext = gem.initialize()
-        myModel   = gem.loadModel(myContext, "sample.csm")
+        myModel   = gem.loadModel(myContext, sample_file)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
         self.assertEqual(nattr, 0)
@@ -317,7 +320,7 @@ class PyRiteTestCase(unittest.TestCase):
     #       gem.terminate
     def test_DRep(self):
         myContext = gem.initialize()
-        myModel   = gem.loadModel(myContext, "sample.csm")
+        myModel   = gem.loadModel(myContext, sample_file)
         myDRep    = gem.newDRep(myModel)
         gem.tesselDRep(myDRep, 0, 0, 0, 0)
 
