@@ -5,7 +5,7 @@ import unittest
 from pygem_quartz import gem
 import numpy
 
-sample_file = os.path.join(os.path.dirname(__file__), "sample.csm")
+sample_file = os.path.join(os.path.dirname(__file__), "Piston.BRep")
 
 class PygemTestCase(unittest.TestCase):
 
@@ -54,6 +54,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_LoadModel(self):
         myContext = gem.initialize()
+        gem.setAttribute(myContext, "Modeler", 0, "s_attr", "OpenCASCADE")
         myModel   = gem.loadModel(myContext, sample_file)
 
         gem.setAttribute(myModel, "MODEL",  0, "s_attr", "model attribute")
@@ -65,10 +66,8 @@ class PygemTestCase(unittest.TestCase):
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(copyModel)
         self.assertEqual(filename, sample_file)
-        self.assertEqual(modeler,  "OpenCSM")
+        self.assertEqual(modeler,  "OpenCASCADE")
         self.assertEqual(uptodate,  1)
-        self.assertEqual(nparam,   33)
-        self.assertEqual(nbranch,  22)
         self.assertEqual(nattr,     3)
 
         aname, values = gem.getAttribute(copyModel, "MODEL", 0, 1)
@@ -100,6 +99,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_StaticModel(self):
         myContext = gem.initialize()
+        gem.setAttribute(myContext, 'Modeler', 0, 's_attr', 'OpenCASCADE')
         myModel   = gem.loadModel(myContext, sample_file)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
@@ -132,113 +132,7 @@ class PygemTestCase(unittest.TestCase):
         gem.releaseModel(myModel)
         gem.terminate(myContext)
 
-    # test: gem.initialize
-    #       gem.loadModel
-    #       gem.getModel
-    #       gem.setAttribute(BRANCH)
-    #       gem.getBranch
-    #       gem.retAttribute(BRANCH)
-    #       gem.setSuppress
-    #       gem.regenModel
-    #       gem.releaseModel
-    #       gem.terminate
-    def test_Branches(self):
-        myContext = gem.initialize()
-        myModel   = gem.loadModel(myContext, sample_file)
 
-        server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
-
-        for ibranch in range(2, nbranch+1):
-            gem.setAttribute(myModel, "BRANCH", ibranch, "s_attr", "$branch attribute")
-
-            bname, btype, suppress, parents, children, nattr = gem.getBranch(myModel, ibranch)
-            gem.setAttribute(myModel, "BRANCH", ibranch, "s_attr", "$branch attribute")
-
-        ibranch = 9
-        gem.setSuppress(myModel, ibranch, 1)
-
-        bname, btype, suppress, parents, children, nattr = gem.getBranch(myModel, ibranch)
-        self.assertEqual(bname,    "feature")
-        self.assertEqual(btype,    "extrude")
-        self.assertEqual(suppress, 1        )
-        self.assertEqual(parents,  (8,)     )
-        self.assertEqual(children, (10,)    )
-        self.assertEqual(nattr,    1        )
-
-        gem.regenModel(myModel)
-
-        for ibranch in range(2, nbranch+1):
-            bname, btype, suppress, parents, children, nattr = gem.getBranch(myModel, ibranch)
-            if (ibranch == 2):
-                self.assertEqual(nattr, 4, "ibranch=%d" % ibranch)
-            else:
-                self.assertEqual(nattr, 1, "ibranch=%d" % ibranch)
-
-            aindex, values = gem.retAttribute(myModel, "BRANCH", ibranch, "s_attr")
-            self.assertEqual(aindex, nattr,               "ibranch=%d" % ibranch)
-            self.assertEqual(values, "$branch attribute", "ibranch=%d" % ibranch)
-
-        gem.releaseModel(myModel)
-        gem.terminate(myContext)
-
-    # test: gem.initialize
-    #       gem.loadModel
-    #       gem.getModel
-    #       gem.setAttribute(PARAM)
-    #       gem.getParam
-    #       gem.getAttribute(PARAM)
-    #       gem.setParam
-    #       gem.regenModel
-    #       gem.releaseModel
-    #       gem.terminate
-    def test_Parameters(self):
-        myContext = gem.initialize()
-        myModel   = gem.loadModel(myContext, sample_file)
-
-        server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
-
-        for iparam in range(1, nparam+1):
-            gem.setAttribute(myModel, "PARAM", iparam, "s_attr", "param attribute")
-            gem.setAttribute(myModel, "PARAM", iparam, "i_attr", (     iparam,)   )
-            gem.setAttribute(myModel, "PARAM", iparam, "r_attr", (10.0*iparam,)   )
-
-        iparam = 4
-        pname, bflag, order, values, nattr = gem.getParam(myModel, iparam)
-        self.assertEqual(pname,     "ymax")
-        self.assertEqual(bflag,     0     )
-        self.assertEqual(order,     0     )
-        self.assertEqual(values[0], 1.0   )
-        self.assertEqual(nattr,     3     )
-
-        gem.setParam(myModel, iparam, (1.5,))
-
-        gem.regenModel(myModel)
-
-        pname, bflag, order, values, nattr = gem.getParam(myModel, iparam)
-        self.assertEqual(pname,     "ymax")
-        self.assertEqual(bflag,     0     )
-        self.assertEqual(order,     0     )
-        self.assertEqual(values[0], 1.5   )
-        self.assertEqual(nattr,     3     )
-
-        for iparam in range(1, nparam+1):
-            pname, bflag, order, values, nattr = gem.getParam(myModel, iparam)
-            self.assertEqual(nattr, 3, "iparam=%d" % iparam)
-
-            aindex, values = gem.retAttribute(myModel, "PARAM", iparam, "s_attr")
-            self.assertEqual(aindex, 1,                 "iparam=%d" % iparam)
-            self.assertEqual(values, "param attribute", "iparam=%d" % iparam)
-
-            aindex, values = gem.retAttribute(myModel, "PARAM", iparam, "i_attr")
-            self.assertEqual(aindex,    2,      "iparam=%d" % iparam)
-            self.assertEqual(values[0], iparam, "iparam=%d" % iparam)
-
-            aindex, values = gem.retAttribute(myModel, "PARAM", iparam, "r_attr")
-            self.assertEqual(aindex, 3,              "iparam=%d" % iparam)
-            self.assertEqual(values[0], 10.0*iparam, "iparam=%d" % iparam)
-
-        gem.releaseModel(myModel)
-        gem.terminate(myContext)
 
     # test: gem.initialize
     #       gem.loadModel
@@ -254,6 +148,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_BRep(self):
         myContext = gem.initialize()
+        gem.setAttribute(myContext, 'Modeler', 0, 's_attr', 'OpenCASCADE')
         myModel   = gem.loadModel(myContext, sample_file)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
@@ -320,64 +215,28 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_DRep(self):
         myContext = gem.initialize()
+        gem.setAttribute(myContext, 'Modeler', 0, 's_attr', 'OpenCASCADE')
         myModel   = gem.loadModel(myContext, sample_file)
         myDRep    = gem.newDRep(myModel)
         gem.tesselDRep(myDRep, 0, 0, 0, 0)
 
         iface = 1
-        xyzArray, uvArray, connArray = gem.getTessel(myDRep, 1, 1)
+        triArray, xyzArray = gem.getTessel(myDRep, 1, 1)
 
         npnt = (xyzArray.shape)[0]
-        ntri = (connArray.shape)[0]
+        ntri = (triArray.shape)[0]
 
         # make sure that triangle pointers are consistent
         for itri in range(1, ntri+1):
-            for iside in [3, 4, 5]:
-                jtri = connArray[itri-1,iside]
-                if (jtri > 0):
-                    for jside in [3, 4, 5]:
-                        if (connArray[jtri-1,jside] == itri):
-                            self.assertEqual(connArray[itri-1, (iside+1)%3],
-                                             connArray[jtri-1, (jside+2)%3],
-                                             "itri=%d, jtri=%d" % (itri, jtri))
-                            self.assertEqual(connArray[itri-1, (iside+2)%3],
-                                             connArray[jtri-1, (jside+1)%3],
-                                             "itri=%d, jtri=%d" % (itri, jtri))
-                            break
-
-        # make sure all triangles normals (in UV) point in same direction
-        itri  = 1
-        u0    = uvArray[connArray[itri-1,0]-1,0]
-        v0    = uvArray[connArray[itri-1,0]-1,1]
-        u1    = uvArray[connArray[itri-1,1]-1,0]
-        v1    = uvArray[connArray[itri-1,1]-1,1]
-        u2    = uvArray[connArray[itri-1,2]-1,0]
-        v2    = uvArray[connArray[itri-1,2]-1,1]
-        area1 = (u1 - u0) * (v2 - v0) - (v1 - v0) * (u2 - u0)
-
-        for itri in range(2, ntri+1):
-            u0   = uvArray[connArray[itri-1,0]-1,0]
-            v0   = uvArray[connArray[itri-1,0]-1,1]
-            u1   = uvArray[connArray[itri-1,1]-1,0]
-            v1   = uvArray[connArray[itri-1,1]-1,1]
-            u2   = uvArray[connArray[itri-1,2]-1,0]
-            v2   = uvArray[connArray[itri-1,2]-1,1]
-            area = (u1 - u0) * (v2 - v0) - (v1 - v0) * (u2 - u0)
-
-            self.assertTrue(area*area1 >= 0, "itri=%d" % itri)
+            for iside in [0, 1, 2]:
+                jtri = triArray[itri-1,iside]
+                if not ((jtri > 0) and (jtri <= npnt)):
+                    self.fail('jtri not in (0 to %d)' % npnt)
 
         gem.destroyDRep(myDRep)
         gem.releaseModel(myModel)
         gem.terminate(myContext)
 
-    # do not test: gem.getBRepOwner
-    #              gem.getWire
-    #              gem.isEquivalent
-    #              gem.plotDRep
-    #              gem.saveModel
-    #              gem.solidBoolean
-    def test_untested(self):
-        pass
 
 if __name__ == "__main__":
     unittest.main()
