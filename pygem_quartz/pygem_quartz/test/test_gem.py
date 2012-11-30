@@ -67,7 +67,7 @@ class PygemTestCase(unittest.TestCase):
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(copyModel)
         self.assertEqual(filename, sample_file)
         self.assertEqual(modeler,  "OpenCASCADE")
-        self.assertEqual(uptodate,  1)
+        self.assertEqual(uptodate,  -1)
         self.assertEqual(nattr,     3)
 
         aname, values = gem.getAttribute(copyModel, "MODEL", 0, 1)
@@ -156,11 +156,6 @@ class PygemTestCase(unittest.TestCase):
 
         for myBRep in myBReps:
             box, type, nnode, nedge, nloop, nface, nshell, nattr = gem.getBRepInfo(myBRep)
-            self.assertEqual(nattr, 2)
-
-            aname, values = gem.getAttribute(myBRep, "BREP", 0, 1)
-            self.assertEqual(aname,     "body")
-            self.assertEqual(values[0], 18    )
 
             # check that all nodes are in box
             for inode in range(1, nnode+1):
