@@ -54,7 +54,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_LoadModel(self):
         myContext = gem.initialize()
-        gem.setAttribute(myContext, 'Modeler', 0, 's_attr', 'OpenCASCADE')
+        gem.setAttribute(myContext, "Modeler", 0, "s_attr", "OpenCASCADE")
         myModel   = gem.loadModel(myContext, sample_file)
 
         gem.setAttribute(myModel, "MODEL",  0, "s_attr", "model attribute")
@@ -215,6 +215,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_DRep(self):
         myContext = gem.initialize()
+        gem.setAttribute(myContext, 'Modeler', 0, 's_attr', 'OpenCASCADE')
         myModel   = gem.loadModel(myContext, sample_file)
         myDRep    = gem.newDRep(myModel)
         gem.tesselDRep(myDRep, 0, 0, 0, 0)
@@ -236,14 +237,6 @@ class PygemTestCase(unittest.TestCase):
         gem.releaseModel(myModel)
         gem.terminate(myContext)
 
-    # do not test: gem.getBRepOwner
-    #              gem.getWire
-    #              gem.isEquivalent
-    #              gem.plotDRep
-    #              gem.saveModel
-    #              gem.solidBoolean
-    def test_untested(self):
-        pass
 
 if __name__ == "__main__":
     unittest.main()
