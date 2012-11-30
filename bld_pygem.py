@@ -9,6 +9,52 @@ import StringIO
 import fnmatch
 import struct
 
+def get_osx_distutils_files(startdir='.'):
+    """Return a tuple of (objfile, libfile), the object and lib files that
+    distutils builds when running 'python setup.py build' for pygem_quartz.
+    Note that this applies only to the pygem_quartz distro on OSX and is not a 
+    general routine.
+    """
+    objfile = libfile = None
+    startdir = os.path.abspath(os.path.expanduser(startdir))
+    for path, dirlist, filelist in os.walk(startdir):
+        for name in filelist:
+            fpath = os.path.join(path, name)
+            if fpath.endswith('.so'):
+                libfile = fpath
+            elif fpath.endswith('.o'):
+                objfile = fpath
+
+    return (objfile, libfile)
+
+
+def osx_hack(options, env, arch, srcdir, gv=None):
+    dct = env.copy()
+    mac_ver = '.'.join(platform.mac_ver()[0].split('.')[:2])
+    objfile, libfile = get_osx_distutils_files(srcdir)
+    dct['PYARCH'] = arch
+    dct['OBJFNAME'] = objfile
+    dct['LIBFNAME'] = libfile
+
+    if options.gem_type == 'quartz':
+        print 'special relink for quartz on OSX %s...' % mac_ver
+        xtras = ' -u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit'
+        cmd = "gcc-4.2 -Wl,-F. -bundle -undefined dynamic_lookup %(PYARCH)s %(OBJFNAME)s -L%(GEM_BLOC)s/lib -L%(CAPRILIB)s -L/usr/X11/lib -lgem -lquartz -lgem -lquartz -lcapriDyn -ldcapri" % dct
+        if gv:
+            cmd = cmd + " -lgv -lGLU -lGL -lX11 -lXext -lpthread -o %(LIBFNAME)s " % dct + extras
+            if mac_ver == '10.5':
+                cmd = cmd + " -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib"
+        else:
+            cmd = cmd + " -lX11 -o %(LIBFNAME)s " % dct + xtras
+    elif options.gem_type == 'diamond':
+        if gv and mac_ver == '10.5':
+            print "special relink for diamond gv on OSX 10.5..."
+            cmd = "gcc -Wl,-F. -bundle -undefined dynamic_lookup %(PYARCH)s %(OBJFNAME)s -L%(GEM_BLOC)s/lib -L%(EGADSLIB)s -L/usr/X11/lib -lgem -ldiamond -legads -lgv -lGLU -lGL -lX11 -lXext -lpthread -o %(LIBFNAME)s -framework IOKit -framework CoreFoundation -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib" % dct
+
+    print cmd
+    return subprocess.call(cmd, shell=True, env=os.environ,  cwd=srcdir)
+
+
 def copy(src, dst):
     """copy symlinks if present"""
     if (not sys.platform.startswith('win')) and os.path.islink(src):
@@ -76,6 +122,15 @@ def _get_occ_libs(libpath):
         libs = fnmatch.filter(os.listdir(libpath), "*.dll")
     return [join(libpath, lib) for lib in libs]
 
+def _get_capri_libs(libpath):
+    libpath = expanduser(libpath)
+    if sys.platform.startswith('darwin'):
+        libs = fnmatch.filter(os.listdir(libpath), "*.SO")
+        libs.extend(fnmatch.filter(os.listdir(libpath), "*.dylib"))
+    else:
+        raise NotImplementedError("current platform not supported")
+    return [join(libpath, lib) for lib in libs]
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
@@ -106,9 +161,33 @@ if __name__ == '__main__':
         print '\nYou must specify a GEM type (diamond or quartz)\n'
         parser.print_help()
         sys.exit(-1)
+
+    distroot = join(dirname(abspath(__file__)), 'pygem_'+options.gem_type)
     
     capri = options.caprilib or options.capriinc
     
+    if options.esp_dir:
+        esp_dir = expand_path(options.esp_dir)
+        esp_src = join(esp_dir,'src')
+        esp_libs = join(esp_dir, 'lib')
+        egads_lib = join(esp_dir, 'lib')
+    
+        
+    if options.casroot:
+        cas_rev = options.casrev
+        cas_root = expand_path(options.casroot)
+        if sys.platform.startswith('win'):
+            cas_root = join(cas_root, 'ros')
+        if not isdir(cas_root):
+            print "OpenCASCADE directory %s doesn't exist\n" % cas_root
+            sys.exit(-1)          
+        if cas_rev is None:
+            cas_rev = _get_cas_rev(cas_root)
+            
+        if cas_rev is None:
+            print "Can't determine OpenCASCADE revision\n"
+            sys.exit(-1)
+
     if options.gem_type == 'diamond':
         if options.casroot is None:
             print "OpenCASCADE directory must be supplied\n"
@@ -119,51 +198,35 @@ if __name__ == '__main__':
             parser.print_help()
             sys.exit(-1)
             
-        cas_rev = options.casrev
-        cas_root = expand_path(options.casroot)
-        if sys.platform.startswith('win'):
-            cas_root = join(cas_root, 'ros')
-        esp_dir = expand_path(options.esp_dir)
-        esp_src = join(esp_dir,'src')
-        esp_libs = join(esp_dir, 'lib')
-        
-        if not isdir(cas_root):
-            print "OpenCASCADE directory %s doesn't exist\n" % cas_root
-            sys.exit(-1)
+        libs = [egads_lib, cas_lib]
+    elif options.gem_type == 'quartz':
+        libs = [options.caprilib]
+     
+    if options.esp_dir and not isdir(esp_dir):
+        print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
+        sys.exit(-1)
             
-        if not isdir(esp_dir):
-            print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
-            sys.exit(-1)
-            
+    if options.casroot:
         if sys.platform.startswith('win'):
             # TODO: make the determination of cas_lib on windows more robust
             cas_lib = join(cas_root, 'win32', 'vc8', 'lib')
         else:
             cas_lib = join(cas_root, 'lib')
-        egads_lib = join(esp_dir, 'lib')
-        if cas_rev is None:
-            cas_rev = _get_cas_rev(cas_root)
-            
-        if cas_rev is None:
-            print "Can't determine OpenCASCADE revision\n"
-            sys.exit(-1)
-    
-        libs = [egads_lib, cas_lib]
-    elif options.gem_type == 'quartz':
-        libs = [options.caprilib]
-        
+
     lib_path_tup = _get_dlibpath(libs)
     arch = _get_arch()
-    
+
     env = {
         'GEM_ARCH': arch,
         'GEM_TYPE': options.gem_type,
         'GEM_BLOC': dirname(abspath(__file__)),
         'GEM_TYPE': options.gem_type,
-        'GEM_ROOT': esp_dir,
         lib_path_tup[0]: lib_path_tup[1],
     }
     
+    if options.esp_dir:
+        env['GEM_ROOT'] = esp_dir
+
     if sys.platform == 'darwin':
         env['MACOSX'] = '.'.join(platform.mac_ver()[0].split('.')[0:2])
         
@@ -179,8 +242,8 @@ if __name__ == '__main__':
         if sys.platform.startswith('win'):
             env['CASARCH'] = env['CASARCH']+'/vc8'
     elif options.gem_type == 'quartz':
-        env['CAPRILIB'] = options.caprilib
-        env['CAPRIINC'] = options.capriinc
+        env['CAPRILIB'] = expanduser(options.caprilib)
+        env['CAPRIINC'] = expanduser(options.capriinc)
         
     if options.gv:
         env['GEM_GRAPHICS'] = 'gv'
@@ -201,9 +264,11 @@ if __name__ == '__main__':
     os.environ.update(env)
     
     # we'll do a make in these directories
-    srcdirs = [esp_src, 
-               join(env['GEM_BLOC'], 'src'),
+    srcdirs = [join(env['GEM_BLOC'], 'src'),
                join(env['GEM_BLOC'], options.gem_type)]
+
+    if options.esp_dir:
+        srcdirs = [esp_src]+srcdirs
  
     if options.clean:
         for srcdir in srcdirs:
@@ -222,19 +287,41 @@ if __name__ == '__main__':
         shutil.rmtree(pygem_libdir)
     os.mkdir(pygem_libdir)
     
-    # collect EngSketchPad libs (egads, opencsm, ...)
-    print 'Copying Engineering Sketchpad libs...'
-    for name in os.listdir(esp_libs):
-        lname = join(esp_libs, name)
-        print lname
-        copy(lname, join(pygem_libdir, name))
+    if options.esp_dir:
+        # collect EngSketchPad libs (egads, opencsm, ...)
+        print 'Copying Engineering Sketchpad libs...'
+        for name in os.listdir(esp_libs):
+            lname = join(esp_libs, name)
+            print lname
+            copy(lname, join(pygem_libdir, name))
     
     # collect opencascade libs
-    print 'Copying OpenCASCADE libs'
-    for libpath in _get_occ_libs(cas_lib):
-        print libpath
-        copy(libpath, join(pygem_libdir, basename(libpath)))
+    if options.casroot:
+        print 'Copying OpenCASCADE libs'
+        for libpath in _get_occ_libs(cas_lib):
+            print libpath
+            copy(libpath, join(pygem_libdir, basename(libpath)))
+
+    if options.caprilib:
+        print 'Copying CAPRI libs'
+        for libpath in _get_capri_libs(options.caprilib):
+            print libpath
+            copy(libpath, join(pygem_libdir, basename(libpath)))
     
+    ret = subprocess.call("python setup.py build",
+                           shell=True, env=os.environ,
+                           cwd=dirname(dirname(pygem_libdir)))
+
+    if sys.platform == 'darwin':
+        if arch == 'DARWIN64':
+            arch = '-arch x86_64'
+        else:
+            arch = '-arch i386'
+        ret = osx_hack(options, env, arch, distroot, gv=options.gv)
+        if ret != 0:
+            print "OSX hack failed"
+            sys.exit(-1)
+
     # build a binary egg distribution
     if options.bdist_egg:
         ret = subprocess.call("python setup.py bdist_egg", 

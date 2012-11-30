@@ -34,7 +34,8 @@ if gem_arch.startswith('DARWIN'):
     gem_extra_compile_args = []
     gem_library_dirs       = [gemlib, caprilib, '/usr/X11/lib']
     gem_libraries          = ['gem', 'quartz', 'gem', 'quartz', 'capriDyn', 'dcapri', 'X11']
-    gem_extra_link_args    = ['-u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit']
+    #gem_extra_link_args    = ['-u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit']
+    gem_extra_link_args    = ['-framework CoreFoundation -framework IOKit']
 elif gem_arch.startswith('LINUX'):
     lib_stuff = ["lib/*.so", "lib/*.so.*"]
     gem_extra_compile_args = []
