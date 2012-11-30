@@ -54,7 +54,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_LoadModel(self):
         myContext = gem.initialize()
-        gem.setAttribute(myContext, "Modeler", 0, "s_attr", "OpenCASCADE")
+        gem.setAttribute(myContext, "CONTEXT", 0, "Modeler", "OpenCASCADE")
         myModel   = gem.loadModel(myContext, sample_file)
 
         gem.setAttribute(myModel, "MODEL",  0, "s_attr", "model attribute")
@@ -99,7 +99,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_StaticModel(self):
         myContext = gem.initialize()
-        gem.setAttribute(myContext, 'Modeler', 0, 's_attr', 'OpenCASCADE')
+        gem.setAttribute(myContext, "CONTEXT", 0, "Modeler", "OpenCASCADE")
         myModel   = gem.loadModel(myContext, sample_file)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
@@ -148,7 +148,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_BRep(self):
         myContext = gem.initialize()
-        gem.setAttribute(myContext, 'Modeler', 0, 's_attr', 'OpenCASCADE')
+        gem.setAttribute(myContext, "CONTEXT", 0, "Modeler", "OpenCASCADE")
         myModel   = gem.loadModel(myContext, sample_file)
 
         server, filename, modeler, uptodate, myBReps, nparam, nbranch, nattr = gem.getModel(myModel)
@@ -215,7 +215,7 @@ class PygemTestCase(unittest.TestCase):
     #       gem.terminate
     def test_DRep(self):
         myContext = gem.initialize()
-        gem.setAttribute(myContext, 'Modeler', 0, 's_attr', 'OpenCASCADE')
+        gem.setAttribute(myContext, "CONTEXT", 0, "Modeler", "OpenCASCADE")
         myModel   = gem.loadModel(myContext, sample_file)
         myDRep    = gem.newDRep(myModel)
         gem.tesselDRep(myDRep, 0, 0, 0, 0)

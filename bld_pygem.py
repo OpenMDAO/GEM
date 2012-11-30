@@ -9,6 +9,7 @@ import StringIO
 import fnmatch
 import struct
 
+
 def get_osx_distutils_files(startdir='.'):
     """Return a tuple of (objfile, libfile), the object and lib files that
     distutils builds when running 'python setup.py build' for pygem_quartz.
@@ -127,6 +128,8 @@ def _get_capri_libs(libpath):
     if sys.platform.startswith('darwin'):
         libs = fnmatch.filter(os.listdir(libpath), "*.SO")
         libs.extend(fnmatch.filter(os.listdir(libpath), "*.dylib"))
+    elif sys.platform.startswith('win'):
+        libs = fnmatch.filter(os.listdir(libpath), "*.dll")
     else:
         raise NotImplementedError("current platform not supported")
     return [join(libpath, lib) for lib in libs]
