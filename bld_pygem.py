@@ -112,7 +112,8 @@ def _get_cas_rev(cas_root):
                         if len(parts)>1 and parts[0] == '#define' and parts[1] == 'OCC_VERSION':
                             return parts[2]
 
-def _get_occ_libs(libpath):
+def _get_occ_libs(rootpath, libpath):
+    extras = []
     if sys.platform.startswith('linux'):
         libs = fnmatch.filter(os.listdir(libpath), "*.so")
         libs.extend(fnmatch.filter(os.listdir(libpath), "*.so.*"))
@@ -121,7 +122,9 @@ def _get_occ_libs(libpath):
     elif sys.platform.startswith("win"):
         libpath = join(dirname(libpath), 'bin')
         libs = fnmatch.filter(os.listdir(libpath), "*.dll")
-    return [join(libpath, lib) for lib in libs]
+        extras = [join(dirname(rootpath), '3rdparty', 'win32', 
+                                 'tbb', 'bin', 'tbbmalloc.dll')]
+    return [join(libpath, lib) for lib in libs]+extras
 
 def _get_capri_libs(libpath):
     libpath = expanduser(libpath)
@@ -130,6 +133,8 @@ def _get_capri_libs(libpath):
         libs.extend(fnmatch.filter(os.listdir(libpath), "*.dylib"))
     elif sys.platform.startswith('win'):
         libs = fnmatch.filter(os.listdir(libpath), "*.dll")
+        libs.remove('capriCS.dll')
+        libs.remove('capriSCS.dll')
     else:
         raise NotImplementedError("current platform not supported")
     return [join(libpath, lib) for lib in libs]
@@ -183,7 +188,14 @@ if __name__ == '__main__':
             cas_root = join(cas_root, 'ros')
         if not isdir(cas_root):
             print "OpenCASCADE directory %s doesn't exist\n" % cas_root
-            sys.exit(-1)          
+            sys.exit(-1)
+              
+        if sys.platform.startswith('win'):
+            # TODO: make the determination of cas_lib on windows more robust
+            cas_lib = join(cas_root, 'win32', 'vc8', 'lib')
+        else:
+            cas_lib = join(cas_root, 'lib')
+
         if cas_rev is None:
             cas_rev = _get_cas_rev(cas_root)
             
@@ -209,13 +221,6 @@ if __name__ == '__main__':
         print "Engineering Sketchpad directory %s doesn't exist\n" % esp_dir
         sys.exit(-1)
             
-    if options.casroot:
-        if sys.platform.startswith('win'):
-            # TODO: make the determination of cas_lib on windows more robust
-            cas_lib = join(cas_root, 'win32', 'vc8', 'lib')
-        else:
-            cas_lib = join(cas_root, 'lib')
-
     lib_path_tup = _get_dlibpath(libs)
     arch = _get_arch()
 
@@ -301,9 +306,17 @@ if __name__ == '__main__':
     # collect opencascade libs
     if options.casroot:
         print 'Copying OpenCASCADE libs'
-        for libpath in _get_occ_libs(cas_lib):
+        for libpath in _get_occ_libs(cas_root, cas_lib):
             print libpath
             copy(libpath, join(pygem_libdir, basename(libpath)))
+
+        # OCC adds a dependency on IEshims.dll on Windows
+        if sys.platform.startswith('win'):
+            shims = join(os.environ.get('ProgramFiles',''), 
+                           'Internet Explorer', 'IEShims.dll')
+            if isfile(shims):
+                print shims
+                copy(shims, join(pygem_libdir, basename(shims)))
 
     if options.caprilib:
         print 'Copying CAPRI libs'
