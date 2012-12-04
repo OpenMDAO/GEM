@@ -26,7 +26,7 @@ print '\nMaking "gem.so" for "%s" (on %s)\n' % (gem_type, gem_arch)
 gem_include_dirs       = ['../include', numpy_include]
 
 if gem_arch.startswith('DARWIN'):
-    lib_stuff = ["lib/*.dylib"]
+    lib_stuff = ["lib/*.dylib", "lib/*.SO"]
     if gem_arch == "DARWIN64":
         os.environ['ARCHFLAGS'] = '-arch x86_64'
     else:
@@ -34,7 +34,8 @@ if gem_arch.startswith('DARWIN'):
     gem_extra_compile_args = []
     gem_library_dirs       = [gemlib, caprilib, '/usr/X11/lib']
     gem_libraries          = ['gem', 'quartz', 'gem', 'quartz', 'capriDyn', 'dcapri', 'X11']
-    gem_extra_link_args    = ['-u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit']
+    #gem_extra_link_args    = ['-u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit']
+    gem_extra_link_args    = ['-framework CoreFoundation -framework IOKit']
 elif gem_arch.startswith('LINUX'):
     lib_stuff = ["lib/*.so", "lib/*.so.*"]
     gem_extra_compile_args = []
@@ -42,13 +43,13 @@ elif gem_arch.startswith('LINUX'):
     gem_libraries          = ['gem', 'quartz', 'gem', 'quartz', 'capriDyn', 'dcapri', 'X11']
     gem_extra_link_args    = ['-rdynamic']
 elif gem_arch == 'WIN32':
-    lib_stuff = [".dll"]
+    lib_stuff = ["lib/*.dll"]
     gem_extra_compile_args = []
     gem_extra_link_args    = []
     gem_library_dirs       = [gemlib, caprilib]
     gem_libraries          = ['gem', 'quartz', 'capriDyn', 'dcapri']
 elif gem_arch == 'WIN64':
-    lib_stuff = [".dll"]
+    lib_stuff = ["lib/*.dll"]
     gem_extra_compile_args = ['-DLONGLONG']
     gem_extra_link_args    = []
     gem_library_dirs       = [gemlib, caprilib]
@@ -97,7 +98,7 @@ setup (name = pkg_name,
        zip_safe = False,
        ext_modules = [module1],
        packages = [pkg_name],
-       package_data = { pkg_name: ['test/*.py', 'test/*.csm', 'test/*.col']+
+       package_data = { pkg_name: ['test/*.py', 'test/*.BRep', 'test/*.col']+
                         lib_stuff
        },
       ) 
