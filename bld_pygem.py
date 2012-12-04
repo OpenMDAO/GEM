@@ -133,8 +133,9 @@ def _get_capri_libs(libpath):
         libs.extend(fnmatch.filter(os.listdir(libpath), "*.dylib"))
     elif sys.platform.startswith('win'):
         libs = fnmatch.filter(os.listdir(libpath), "*.dll")
-        libs.remove('capriCS.dll')
-        libs.remove('capriSCS.dll')
+        for rem in ['capriCS.dll', 'capriSCS.dll']:
+            if rem in libs: 
+                libs.remove(rem)
     else:
         raise NotImplementedError("current platform not supported")
     return [join(libpath, lib) for lib in libs]
