@@ -37,6 +37,7 @@ def osx_hack(options, env, arch, srcdir, gv=None):
     dct['OBJFNAME'] = objfile
     dct['LIBFNAME'] = libfile
 
+    cmd = None
     if options.gem_type == 'quartz':
         print 'special relink for quartz on OSX %s...' % mac_ver
         xtras = ' -u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit'
@@ -52,8 +53,8 @@ def osx_hack(options, env, arch, srcdir, gv=None):
             print "special relink for diamond gv on OSX 10.5..."
             cmd = "gcc -Wl,-F. -bundle -undefined dynamic_lookup %(PYARCH)s %(OBJFNAME)s -L%(GEM_BLOC)s/lib -L%(EGADSLIB)s -L/usr/X11/lib -lgem -ldiamond -legads -lgv -lGLU -lGL -lX11 -lXext -lpthread -o %(LIBFNAME)s -framework IOKit -framework CoreFoundation -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib" % dct
 
-    print cmd
-    return subprocess.call(cmd, shell=True, env=os.environ,  cwd=srcdir)
+    if cmd:
+        return subprocess.call(cmd, shell=True, env=os.environ,  cwd=srcdir)
 
 
 def copy(src, dst):
@@ -346,7 +347,7 @@ if __name__ == '__main__':
         else:
             arch = '-arch i386'
         ret = osx_hack(options, env, arch, distroot, gv=options.gv)
-        if ret != 0:
+        if ret:
             print "OSX hack failed"
             sys.exit(-1)
 
