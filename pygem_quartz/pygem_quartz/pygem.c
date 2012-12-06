@@ -2112,7 +2112,7 @@ gemGetTessel(PyObject* module, PyObject* args)
 {
     PyObject  *result, *xyz_nd, *tri_nd;
     LONG      longDRep;
-    int       status, ibrep, iface, npts, *iptr, i, ntris, *tris;
+    int       status, ibrep, iface, npts, ntris, *tris;
     double    *xyz;
     gemDRep   *drep;
     gemPair   bface;
@@ -2225,21 +2225,21 @@ gemPlotDRep(PyObject* module, PyObject* args)
     gemModel  *model;
 #endif
 
-    gemDRep   *drep;
-
     /* validate the inputs */
     if (!PyArg_ParseTuple(args, "l", &longDRep)) {
         PyErr_SetString(PyExc_TypeError, "bad args: should be \"drepObj\"");
         return NULL;
     }
 
-    if (checkGemObject(longDRep)) {
-        drep = (gemDRep*)longDRep;
-    } else {
+    if (!checkGemObject(longDRep)) {
         THROW_EXCEPTION(GEM_BADMODEL, gem.plotModel);
     }
 
 #ifdef GEM_GRAPHICS
+    gemDRep   *drep;
+
+    drep = (gemDRep*)longDRep;
+
     /* store the plot Model */
     plotDRep = drep;
 
@@ -3167,8 +3167,6 @@ GemMethods[] = {
 PyMODINIT_FUNC
 initgem(void)
 {
-    PyObject  *module;
-
     /* (re)initialize the gemObjects */
     if (gemObjects != NULL) free(gemObjects);
        gemObjects = NULL;
@@ -3176,7 +3174,7 @@ initgem(void)
     maxGemObjects = 0;
 
     /* initialize the Module */
-    module = Py_InitModule("gem", GemMethods);
+    Py_InitModule("gem", GemMethods);
 
     /* load the numpy C API */
     import_array();

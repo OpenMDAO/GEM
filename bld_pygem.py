@@ -337,7 +337,7 @@ if __name__ == '__main__':
             print libpath
             copy(libpath, join(pygem_libdir, basename(libpath)))
     
-    ret = subprocess.call("python setup.py build",
+    ret = subprocess.call("python setup.py build -f",
                            shell=True, env=os.environ,
                            cwd=dirname(dirname(pygem_libdir)))
 

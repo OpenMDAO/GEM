@@ -4,7 +4,7 @@ import sys
 
 try:
     import numpy
-    numpy_include = os.path.join(os.path.dirname(numpy.__file__), 
+    numpy_include = os.path.join(os.path.dirname(numpy.__file__),
                                  'core', 'include')
 except ImportError:
     print 'numpy was not found.  Aborting build'
@@ -23,11 +23,11 @@ egadslib = os.environ['EGADSLIB']
 
 print '\nMaking "gem.so" for "%s" (on %s)\n' % (gem_type, gem_arch)
 
-gem_include_dirs       = ['../include', numpy_include]
+gem_include_dirs = ['../include', numpy_include]
 gem_extra_compile_args = []
-gem_extra_link_args    = []
-gem_libraries          = ['gem', 'diamond', 'egads']
-gem_library_dirs       = [gemlib, egadslib]
+gem_extra_link_args = []
+gem_libraries = ['gem', 'diamond', 'egads']
+gem_library_dirs = [gemlib, egadslib]
 
 if gem_arch.startswith('DARWIN'):
     lib_stuff = ["lib/*.dylib"]
@@ -51,11 +51,11 @@ if (os.environ.get('GEM_GRAPHICS') == "gv"):
     gem_extra_compile_args.append('-DGEM_GRAPHICS=gv')
 
     if gem_arch.startswith('WIN'):
-        gem_libraries.extend(['gv','GLU32','OpenGL32','User32','GDI32'])
+        gem_libraries.extend(['gv', 'GLU32', 'OpenGL32', 'User32', 'GDI32'])
     elif gem_arch.startswith('LINUX'):
-        gem_libraries.extend(['gv','GLU','GL','X11','Xext','pthread'])
+        gem_libraries.extend(['gv', 'GLU', 'GL', 'X11', 'Xext', 'pthread'])
     elif gem_arch.startswith("DARWIN"):
-        gem_libraries.extend(['gv','GLU','GL','X11','Xext','pthread'])
+        gem_libraries.extend(['gv', 'GLU', 'GL', 'X11', 'Xext', 'pthread'])
         gem_extra_link_args.append('-framework IOKit -framework CoreFoundation')
 
 # Legal keyword arguments for the Extension constructor
@@ -65,14 +65,14 @@ if (os.environ.get('GEM_GRAPHICS') == "gv"):
 #    'extra_objects', 'extra_compile_args', 'extra_link_args',
 #    'swig_opts', 'export_symbols', 'depends', 'language'
 
-module1 = Extension(pkg_name+'.gem',
-                    include_dirs       = gem_include_dirs,
-                    extra_compile_args = gem_extra_compile_args,
-                    library_dirs       = gem_library_dirs,
-                    libraries          = gem_libraries,
-                    extra_link_args    = gem_extra_link_args,
-                    language           = 'c',
-                    sources            = ['pygem_diamond/pygem.c'])
+module1 = Extension(pkg_name + '.gem',
+                    include_dirs=gem_include_dirs,
+                    extra_compile_args=gem_extra_compile_args,
+                    library_dirs=gem_library_dirs,
+                    libraries=gem_libraries,
+                    extra_link_args=gem_extra_link_args,
+                    language='c',
+                    sources=['pygem_diamond/pygem.c'])
 
 # Legal keyword arguments for the setup() function
 #    'distclass', 'script_name', 'script_args', 'options',
@@ -82,17 +82,16 @@ module1 = Extension(pkg_name+'.gem',
 #    'platforms', 'classifiers', 'download_url',
 #    'requires', 'provides', 'obsoletes'
 
-setup (name = pkg_name,
-       version = '0.9.1',
-       description = 'Python interface to GEM using OpenCSM and EGADS',
-       zip_safe = False,
-       ext_modules = [module1],
-       packages = [pkg_name],
-       package_data = { pkg_name: ['test/*.py', 'test/*.csm', 'test/*.col']+
-                        lib_stuff
+setup(name=pkg_name,
+       version='0.9.1',
+       description='Python interface to GEM using OpenCSM and EGADS',
+       zip_safe=False,
+       ext_modules=[module1],
+       packages=[pkg_name],
+       package_data={
+          pkg_name: ['test/*.py', 'test/*.csm', 'test/*.col'] +
+                      lib_stuff
        },
-      ) 
-
-
+      )
 
 
