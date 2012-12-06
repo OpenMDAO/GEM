@@ -136,9 +136,19 @@ def _get_capri_libs(libpath):
         for rem in ['capriCS.dll', 'capriSCS.dll']:
             if rem in libs: 
                 libs.remove(rem)
+    elif sys.platform.startswith('linux'):
+        libs = fnmatch.filter(os.listdir(libpath), "*.so")        
     else:
         raise NotImplementedError("current platform not supported")
     return [join(libpath, lib) for lib in libs]
+
+def _get_capri_key(libpath):
+    keyfile = join(dirname(libpath), 'KEYgen.txt')
+    with open(keyfile, 'r') as f:
+        for line in f:
+            if 'CAPRIkey' in line:
+                line = line.strip()
+                return line.split('=')[1].strip()
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
@@ -253,6 +263,7 @@ if __name__ == '__main__':
     elif options.gem_type == 'quartz':
         env['CAPRILIB'] = expanduser(options.caprilib)
         env['CAPRIINC'] = expanduser(options.capriinc)
+        env['CAPRIkey'] = _get_capri_key(env['CAPRILIB'])
         
     if options.gv:
         env['GEM_GRAPHICS'] = 'gv'

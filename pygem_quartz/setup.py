@@ -39,7 +39,7 @@ if gem_arch.startswith('DARWIN'):
 elif gem_arch.startswith('LINUX'):
     lib_stuff = ["lib/*.so", "lib/*.so.*"]
     gem_extra_compile_args = []
-    gem_library_dirs       = [gemlib, caprilib, '/usr/X11R6/lib']
+    gem_library_dirs       = [gemlib, caprilib, '/usr/X11R6/lib', '/usr/lib/x86_64-linux-gnu/libX11']
     gem_libraries          = ['gem', 'quartz', 'gem', 'quartz', 'capriDyn', 'dcapri', 'X11']
     gem_extra_link_args    = ['-rdynamic']
 elif gem_arch == 'WIN32':
