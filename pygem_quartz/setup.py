@@ -93,7 +93,7 @@ module1 = Extension(pkg_name+'.gem',
 #    'requires', 'provides', 'obsoletes'
 
 setup (name = pkg_name,
-       version = '0.90',
+       version = '0.9.1',
        description = 'Python interface to GEM using OpenCSM and Capri',
        zip_safe = False,
        ext_modules = [module1],
