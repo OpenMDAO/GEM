@@ -265,7 +265,10 @@ if __name__ == '__main__':
         env['CAPRILIB'] = expanduser(options.caprilib)
         env['CAPRIINC'] = expanduser(options.capriinc)
         env['CAPRIkey'] = _get_capri_key(env['CAPRILIB'])
-        
+        if sys.platform.startswith('linux'):
+            #env['LDSHARED'] = 'gcc -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions'
+            env['LDSHARED'] = 'gcc -pthread -shared -Wl,-O1'
+
     if options.gv:
         env['GEM_GRAPHICS'] = 'gv'
     
