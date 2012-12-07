@@ -266,12 +266,12 @@ if __name__ == '__main__':
         env['CAPRIINC'] = expanduser(options.capriinc)
         env['CAPRIkey'] = _get_capri_key(env['CAPRILIB'])
         if sys.platform.startswith('linux'):
-            #env['LDSHARED'] = 'gcc -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions'
-            env['LDSHARED'] = 'gcc -pthread -shared -Wl,-O1'
+            #env['LDSHARED'] = '"gcc -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-Bsymbolic-functions -Wl,-z,relro"'
+            env['LDSHARED'] = '"gcc -pthread -shared -fPIC -Wl,-O1 -Wl,-z,relro"'
 
     if options.gv:
         env['GEM_GRAPHICS'] = 'gv'
-    
+
     # generate some shell scripts here to set up the environment for those
     # that want to do things by running make directly
     shfile = open('gemEnv.sh', 'w')
@@ -283,10 +283,13 @@ if __name__ == '__main__':
     finally:
         shfile.close()
         cshfile.close()
-        
+
+    if 'LDSHARED' in env:
+        env['LDSHARED'] = env['LDSHARED'].strip('"')
+
     # update the current environment
     os.environ.update(env)
-    
+
     # we'll do a make in these directories
     srcdirs = [join(env['GEM_BLOC'], 'src'),
                join(env['GEM_BLOC'], options.gem_type)]
