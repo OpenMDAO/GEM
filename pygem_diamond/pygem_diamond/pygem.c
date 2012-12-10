@@ -1357,7 +1357,7 @@ gemGetParam(PyObject *self, PyObject *args)
     }
 
     /* build a tuple of the values */
-    if        (ptype == GEM_BOOL || ptype == GEM_INTEGER) {
+    if (ptype == GEM_BOOL || ptype == GEM_INTEGER) {
         values_tuple = PyTuple_New(plen);
         for (i = 0; i < plen; i++) {
             PyTuple_SetItem(values_tuple, i, Py_BuildValue("i", integers[i]));
