@@ -128,13 +128,18 @@ class GEMParametricGeometry(HasTraits):
                 raise RuntimeError("Error regenerating model: %s" % str(e))
 
     def listParams(self):
+        params = []
         if self._model is not None:
             tup = gem.getModel(self._model)
             nparams = tup[5]
             for p in range(nparams):
-                name, flag, order, values, nattr = gem.getParam(self._model,
-                                                                 p + 1)
-                
+                name, flag, order, values, nattr = gem.getParam(self._model, p + 1)
+                params.append((name, ))
+# target, high=None, low=None,
+#                  scaler=None, adder=None, start=None,
+#                  fd_step=None, scope=None, name=None
+        return params
+
             server, filename, modeler, uptodate, breps, nparam, nbranch, nattr = 
 
     {"getModel",      gemGetModel,      METH_VARARGS,  "Get info about a Model\n\n\

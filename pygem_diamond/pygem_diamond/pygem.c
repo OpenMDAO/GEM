@@ -1498,6 +1498,62 @@ gemSetParam(PyObject *self, PyObject *args)
     /* return the result */
     Py_RETURN_NONE;
 }
+/*
+ ************************************************************************
+ *                                                                      *
+ *   gemGetLimits -- implement gem.getLimits()                          *
+ *                                                                      *
+ ************************************************************************
+ */
+
+static PyObject *
+gemGetLimits(PyObject *self, PyObject *args)
+{
+    PyObject  *result;
+    int       status, iparam, integers[2], i;
+     LONG      longModel;
+    double    reals[2];
+    gemModel  *model;
+
+    /* validate the inputs */
+    if (!PyArg_ParseTuple(args, "li", &longModel, &iparam)) {
+        PyErr_SetString(PyExc_TypeError, "bad args: should be \"modelObj iparam\"");
+        return NULL;
+    }
+
+    if (checkGemObject(longModel)) {
+        model = (gemModel*)longModel;
+    } else {
+        THROW_EXCEPTION(GEM_BADOBJECT, gem.getLimits);
+    }
+
+    reals[0] = 0.;
+    reals[1] = 0.;
+    integers[0] = 0;
+    integers[1] = 0;
+
+    status = gem_getLimits(model, iparam, integers, reals);
+    if (status != GEM_SUCCESS) {
+        THROW_EXCEPTION(status, gem.getLimits);
+    }
+
+    for (i = 0; i < 2; i++) {
+        if (reals[i] != 0.) {
+            result = PyTuple_New(2);
+            PyTuple_SetItem(result, 0, Py_BuildValue("d", reals[0]));
+            PyTuple_SetItem(result, 1, Py_BuildValue("d", reals[1]));
+            return result;
+        } else if (integers[i] != 0) {
+            result = PyTuple_New(2);
+            PyTuple_SetItem(result, 0, Py_BuildValue("i", integers[0]));
+            PyTuple_SetItem(result, 1, Py_BuildValue("i", integers[1]));
+            return result;
+        }
+    }
+
+    /* return the result */
+    Py_RETURN_NONE;
+}
 
 
 /*
@@ -2112,7 +2168,7 @@ gemGetTessel(PyObject* module, PyObject* args)
 {
     PyObject  *result, *xyz_nd, *tri_nd;
     LONG      longDRep;
-    int       status, ibrep, iface, npts, *iptr, i, ntris, *tris;
+    int       status, ibrep, iface, npts, ntris, *tris;
     double    *xyz;
     gemDRep   *drep;
     gemPair   bface;
@@ -2222,10 +2278,7 @@ gemPlotDRep(PyObject* module, PyObject* args)
     double    box[6];
     char      titles[32] = {"U Parameter     V Parameter     "};
     char      *server, *filename, *modeler;
-    gemModel  *model;
 #endif
-
-    gemDRep   *drep;
 
     /* validate the inputs */
     if (!PyArg_ParseTuple(args, "l", &longDRep)) {
@@ -2233,13 +2286,14 @@ gemPlotDRep(PyObject* module, PyObject* args)
         return NULL;
     }
 
+#ifdef GEM_GRAPHICS
+    gemModel  *model;
     if (checkGemObject(longDRep)) {
         drep = (gemDRep*)longDRep;
     } else {
         THROW_EXCEPTION(GEM_BADMODEL, gem.plotModel);
     }
 
-#ifdef GEM_GRAPHICS
     /* store the plot Model */
     plotDRep = drep;
 
@@ -3041,6 +3095,13 @@ GemMethods[] = {
                                                        \t  (values)    \n\
                                                        Returns:        \n\
                                                        \t  <none>      "},
+    {"getLimits",     gemGetLimits,     METH_VARARGS,  "Get information about a parameter's limits\n\n\
+                                                       Input arguments:\n\
+                                                       \t  modelObj    \n\
+                                                       \t  iparam      <bias-1>\n\
+                                                       Returns:\n\
+                                                       \t  upper\n\
+                                                       \t  lower       "},
 
     // routines defined in brep.h
     {"getBRepInfo",   gemGetBRepInfo,   METH_VARARGS,  "Get info about a BRep\n\n\
@@ -3167,8 +3228,6 @@ GemMethods[] = {
 PyMODINIT_FUNC
 initgem(void)
 {
-    PyObject  *module;
-
     /* (re)initialize the gemObjects */
     if (gemObjects != NULL) free(gemObjects);
        gemObjects = NULL;
@@ -3176,7 +3235,7 @@ initgem(void)
     maxGemObjects = 0;
 
     /* initialize the Module */
-    module = Py_InitModule("gem", GemMethods);
+    Py_InitModule("gem", GemMethods);
 
     /* load the numpy C API */
     import_array();
