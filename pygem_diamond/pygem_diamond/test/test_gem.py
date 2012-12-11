@@ -3,6 +3,7 @@
 import os
 import unittest
 from pygem_diamond import gem
+from pygem_diamond.pygem import GEMParametricGeometry
 import numpy
 
 sample_file = os.path.join(os.path.dirname(__file__), "sample.csm")
@@ -113,20 +114,20 @@ class PygemTestCase(unittest.TestCase):
         massProps1 = gem.getMassProps(myBReps[0], "BREP", 0)
         massProps2 = gem.getMassProps(myBReps[1], "BREP", 0)
 
-        self.assertAlmostEqual(massProps1[ 0],  8*massProps2[ 0]  )     # volume
-        self.assertAlmostEqual(massProps1[ 1],  4*massProps2[ 1]  )     # surface area
-        self.assertAlmostEqual(massProps1[ 2],  2*massProps2[ 2]-4)     # xcg
-        self.assertAlmostEqual(massProps1[ 3],  2*massProps2[ 3]  )     # ycg
-        self.assertAlmostEqual(massProps1[ 4],  2*massProps2[ 4]  )     # zcg
-        self.assertAlmostEqual(massProps1[ 5], 32*massProps2[ 5]  )     # Ixx
-        self.assertAlmostEqual(massProps1[ 6], 32*massProps2[ 6]  )     # Ixy
-        self.assertAlmostEqual(massProps1[ 7], 32*massProps2[ 7]  )     # Ixz
-        self.assertAlmostEqual(massProps1[ 8], 32*massProps2[ 8]  )     # Iyx
-        self.assertAlmostEqual(massProps1[ 9], 32*massProps2[ 9]  )     # Iyy
-        self.assertAlmostEqual(massProps1[10], 32*massProps2[10]  )     # Iyz
-        self.assertAlmostEqual(massProps1[11], 32*massProps2[11]  )     # Izx
-        self.assertAlmostEqual(massProps1[12], 32*massProps2[12]  )     # Izy
-        self.assertAlmostEqual(massProps1[13], 32*massProps2[13]  )     # Izz
+        self.assertAlmostEqual(massProps1[0],   8 * massProps2[0])     # volume
+        self.assertAlmostEqual(massProps1[1],   4 * massProps2[1])     # surface area
+        self.assertAlmostEqual(massProps1[2],   2 * massProps2[2] - 4)     # xcg
+        self.assertAlmostEqual(massProps1[3],   2 * massProps2[3])     # ycg
+        self.assertAlmostEqual(massProps1[4],   2 * massProps2[4])     # zcg
+        self.assertAlmostEqual(massProps1[5],  32 * massProps2[5])     # Ixx
+        self.assertAlmostEqual(massProps1[6],  32 * massProps2[6])     # Ixy
+        self.assertAlmostEqual(massProps1[7],  32 * massProps2[7])     # Ixz
+        self.assertAlmostEqual(massProps1[8],  32 * massProps2[8])     # Iyx
+        self.assertAlmostEqual(massProps1[9],  32 * massProps2[9])     # Iyy
+        self.assertAlmostEqual(massProps1[10], 32 * massProps2[10])     # Iyz
+        self.assertAlmostEqual(massProps1[11], 32 * massProps2[11])     # Izx
+        self.assertAlmostEqual(massProps1[12], 32 * massProps2[12])     # Izy
+        self.assertAlmostEqual(massProps1[13], 32 * massProps2[13])     # Izz
 
         gem.releaseModel(newModel)
         gem.releaseModel(myModel)
@@ -180,6 +181,7 @@ class PygemTestCase(unittest.TestCase):
 
         gem.releaseModel(myModel)
         gem.terminate(myContext)
+
 
     # test: gem.initialize
     #       gem.loadModel
@@ -349,6 +351,22 @@ class PygemTestCase(unittest.TestCase):
     #              gem.solidBoolean
     def test_untested(self):
         pass
+
+
+class GEMParametricGeometryTestCase(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def test_GEMParametricGeometry(self):
+        geom = GEMParametricGeometry()
+        geom.model_file = sample_file
+        params = geom.listParameters()
+        self.assertEqual([], [p[0] for p in params])
+
 
 if __name__ == "__main__":
     unittest.main()

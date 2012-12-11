@@ -88,6 +88,8 @@ setup(name=pkg_name,
        zip_safe=False,
        ext_modules=[module1],
        packages=[pkg_name],
+       package_dir={'': '.'},
+       include_package_data=True,
        package_data={
           pkg_name: ['test/*.py', 'test/*.csm', 'test/*.col'] +
                       lib_stuff

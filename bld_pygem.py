@@ -168,6 +168,8 @@ if __name__ == '__main__':
                         help="do a make clean before building")
     parser.add_argument("--bdist_egg", action="store_true", dest="bdist_egg",
                         help="build a binary egg for pygem")
+    parser.add_argument("--develop", action="store_true", dest="develop",
+                        help="build a 'develop' dist for pygem")
     parser.add_argument("--sdist", action="store_true", dest="sdist",
                         help="build a source distribution for pygem")
     parser.add_argument("--gv", action="store_true", dest="gv",
@@ -359,14 +361,19 @@ if __name__ == '__main__':
 
     # build a binary egg distribution
     if options.bdist_egg:
-        ret = subprocess.call("python setup.py bdist_egg", 
-                              shell=True, env=os.environ, 
+        ret = subprocess.call("python setup.py bdist_egg",
+                              shell=True, env=os.environ,
+                              cwd=dirname(dirname(pygem_libdir)))
+        
+    if options.develop:
+        ret = subprocess.call("python setup.py develop",
+                              shell=True, env=os.environ,
                               cwd=dirname(dirname(pygem_libdir)))
         
     # build a source distribution
     if options.sdist:
-        ret = subprocess.call("python setup.py sdist", 
-                              shell=True, env=os.environ, 
+        ret = subprocess.call("python setup.py sdist",
+                              shell=True, env=os.environ,
                               cwd=dirname(dirname(pygem_libdir)))
 
-  
+
