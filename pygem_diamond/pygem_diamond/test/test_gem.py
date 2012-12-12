@@ -362,10 +362,12 @@ class GEMParametricGeometryTestCase(unittest.TestCase):
         pass
 
     def test_GEMParametricGeometry(self):
+        import pprint
         geom = GEMParametricGeometry()
-        geom.model_file = sample_file
+        #geom.model_file = sample_file
+        geom.model_file = '~/Downloads/EngSketchPad/data/bottle2.csm'
         params = geom.listParameters()
-        self.assertEqual([], [p[0] for p in params])
+        self.assertEqual('', pprint.pformat(params))
 
 
 if __name__ == "__main__":

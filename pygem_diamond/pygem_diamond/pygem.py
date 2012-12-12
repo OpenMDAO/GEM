@@ -1,4 +1,5 @@
 
+import os
 
 from openmdao.main.api import Container
 from openmdao.main.datatypes.api import Str
@@ -26,24 +27,26 @@ class GEMParametricGeometry(Container):
 
     def __init__(self):
         self._model = None
-        self._params = {}
+        self._idhash = {}
         self._context = gem.initialize()
 
     def _model_file_changed(self, name, old, new):
-        self.loadModel(self.model_file)
+        self.load_model(os.path.expanduser(self.model_file))
 
-    def loadModel(self, filename):
+    def load_model(self, filename):
         """Load a model from a file."""
         # clean up the old model if there is one
         if self._model is not None:
             gem.releaseModel(self._model)
 
-        self._params = {}
+        self._idhash = {}
         self._model = None
 
         try:
             if filename is not None:
-                self._model = gem.loadModel(self._context, filename)
+                if not os.path.isfile(filename):
+                    raise IOError("file '%s' not found." % filename)
+                self._model = gem.load_model(self._context, filename)
         except Exception, e:
             raise RuntimeError("problem loading GEM model file '%s': %s" % (filename, str(e)))
         return self._model
@@ -135,15 +138,15 @@ class GEMParametricGeometry(Container):
         """Return a list of parameters (if any) for this model.
         """
         params = []
-        self._params = {}
         if self._model is not None:
             tup = gem.getModel(self._model)
             nparams = tup[5]
-            for p in range(nparams):
-                name, flag, order, values, nattr = gem.getParam(self._model, p + 1)
+            for paramID in range(1, nparams + 1):
+                name, flag, order, values, nattr = gem.getParam(self._model, paramID)
+                self._idhash[name] = paramID
                 meta = {}
                 if flag & 8:  # check if param has limits
-                    high, low = gem.getLimits(self._model, p + 1)
+                    high, low = gem.getLimits(self._model, paramID)
                     meta['high'] = high
                     meta['low'] = low
                 else:
@@ -152,8 +155,29 @@ class GEMParametricGeometry(Container):
                     val = list(values)
                 else:
                     val = values[0]
-                params.append((name, p + 1, val, meta))
-                self._params[name] = (p + 1, val, meta)
+                meta['default'] = val
+                if not (flag & 2):
+                    params.append((name, meta))
+
+        return params
+
+    def listOutputs(self):
+        """Return a list of parameters (if any) for this model.
+        """
+        outputs = []
+        if self._model is not None:
+            tup = gem.getModel(self._model)
+            nparams = tup[5]
+            for paramID in range(1, nparams + 1):
+                name, flag, order, values, nattr = gem.getParam(self._model, paramID)
+                self._idhash[name] = paramID
+                meta = {}
+                if len(values) > 1:
+                    val = list(values)
+                else:
+                    val = values[0]
+                if (flag & 2):
+                    outputs.append((name, paramID, val, meta))
 
         return params
 
@@ -161,13 +185,13 @@ class GEMParametricGeometry(Container):
         """Set new value for a driving parameter.
 
         """
-        if self._model is not None and len(self._params) == 0:
+        if self._model is not None and len(self._idhash) == 0:
             self.listParams()   # populate params dict
         try:
-            pindex = self._params[name][0]
+            paramID = self._idhash[name]
             if not isinstance(val, (float, int, str)):
                 val = tuple(val)
-            return gem.setParam(self._model, pindex, val)
+            return gem.setParam(self._model, paramID, val)
         except Exception, e:
             raise RuntimeError("Error setting parameter '%s': %s" % (name, str(e)))
 
