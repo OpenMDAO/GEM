@@ -367,6 +367,8 @@ class GEMParametricGeometryTestCase(unittest.TestCase):
         #geom.model_file = sample_file
         geom.model_file = '~/Downloads/EngSketchPad/data/bottle2.csm'
         params = geom.listParameters()
+        with open('junk.out', 'w') as f:
+            f.write(pprint.pformat(params))
         self.assertEqual('', pprint.pformat(params))
 
 

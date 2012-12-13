@@ -63,7 +63,7 @@ class GEMParametricGeometry(Container):
                 raise RuntimeError("Error regenerating model: %s" % str(e))
 
     def listParameters(self):
-        """Return a list of parameters (if any) for this model.
+        """Return a list of parameters (inputs and outputs) for this model.
         """
         params = []
         if self._model is not None:
@@ -84,30 +84,13 @@ class GEMParametricGeometry(Container):
                 else:
                     val = values[0]
                 meta['default'] = val
-                if not (flag & 2):
-                    params.append((name, meta))
+                if (flag & 2):
+                    meta['iotype'] = 'out'
+                else:
+                    meta['iotype'] = 'in'
+                params.append((name, meta))
 
         return params
-
-    def listOutputs(self):
-        """Return a list of parameters (if any) for this model.
-        """
-        outputs = []
-        if self._model is not None:
-            tup = gem.getModel(self._model)
-            nparams = tup[5]
-            for paramID in range(1, nparams + 1):
-                name, flag, order, values, nattr = gem.getParam(self._model, paramID)
-                self._idhash[name] = paramID
-                meta = {}
-                if len(values) > 1:
-                    val = list(values)
-                else:
-                    val = values[0]
-                if (flag & 2):
-                    outputs.append((name, paramID, val, meta))
-
-        return outputs
 
     def setParameter(self, name, val):
         """Set new value for a driving parameter.
