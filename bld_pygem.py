@@ -5,7 +5,6 @@ import subprocess
 from os.path import join, dirname, basename, abspath, expanduser, isdir, isfile, expandvars
 import platform
 import shutil
-import StringIO
 import fnmatch
 import struct
 
@@ -43,7 +42,7 @@ def osx_hack(options, env, arch, srcdir, gv=None):
         xtras = ' -u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit'
         cmd = "gcc-4.2 -Wl,-F. -bundle -undefined dynamic_lookup %(PYARCH)s %(OBJFNAME)s -L%(GEM_BLOC)s/lib -L%(CAPRILIB)s -L/usr/X11/lib -lgem -lquartz -lgem -lquartz -lcapriDyn -ldcapri" % dct
         if gv:
-            cmd = cmd + " -lgv -lGLU -lGL -lX11 -lXext -lpthread -o %(LIBFNAME)s " % dct + extras
+            cmd = cmd + " -lgv -lGLU -lGL -lX11 -lXext -lpthread -o %(LIBFNAME)s " % dct + xtras
             if mac_ver == '10.5':
                 cmd = cmd + " -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib"
         else:

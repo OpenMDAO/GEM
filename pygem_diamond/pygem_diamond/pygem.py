@@ -46,7 +46,7 @@ class GEMParametricGeometry(Container):
             if filename is not None:
                 if not os.path.isfile(filename):
                     raise IOError("file '%s' not found." % filename)
-                self._model = gem.load_model(self._context, filename)
+                self._model = gem.loadModel(self._context, filename)
         except Exception, e:
             raise RuntimeError("problem loading GEM model file '%s': %s" % (filename, str(e)))
         return self._model
