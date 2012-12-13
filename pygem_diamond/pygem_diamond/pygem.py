@@ -55,78 +55,6 @@ class GEMParametricGeometry(Container):
         """Terminate GEM context."""
         gem.terminate(self._context)
 
-    def getAttrById(self, obj, objtype, eindex, aindex):
-        """Get Attribute of a GEMobject.
-
-        obj: reference
-            A reference to a GEM object
-
-        objtype: str
-            One of ['CONTEXT', 'MODEL', 'BRANCH', 'PARAM', 'BREP', 'NODE', 'EDGE',
-                    'LOOP', 'FACE', or 'SHELL']
-
-        eindex: int <bias-1>
-            ???
-
-        aindex: int <bias-1>
-            ???
-
-        Returns (name, values)
-        """
-        try:
-            return gem.getAttribute(obj, objtype, eindex, aindex)
-        except Exception, e:
-            raise RuntimeError("GEM getAttribute failed: %s" % str(e))
-
-    def getAttrByName(self, obj, objtype, eindex, name):
-        """Get Attribute of a GEMobject.
-
-        obj: reference
-            A reference to a GEM object
-
-        objtype: str
-            One of ['CONTEXT', 'MODEL', 'BRANCH', 'PARAM', 'BREP', 'NODE', 'EDGE',
-                    'LOOP', 'FACE', or 'SHELL']
-
-        eindex: int <bias-1>
-            ???
-
-        name: str
-            Name of the attribute
-
-        Returns (index <bias-1>, values)
-        """
-        try:
-            return gem.retAttribute(obj, objtype, eindex, name)
-        except Exception, e:
-            raise RuntimeError(": %s" % str(e))
-
-    def setAttribute(self, obj, objtype, eindex, name, values):
-        """Set an Attribute for a GEM object.
-
-        obj: reference
-            A reference to a GEM object.
-
-        objtype: str
-            One of ['CONTEXT', 'MODEL', 'BRANCH', 'PARAM', 'BREP', 'NODE',
-                    'EDGE', 'LOOP', 'FACE', or 'SHELL']
-
-        eindex: int
-            Entitiy index <bias-1>
-
-        name: str
-            Name of the Attribute.
-
-        values: tuple
-            Value(s) to assign to the Attribute.
-
-        Returns None.
-        """
-        try:
-            return gem.setAttribute(self, obj, objtype, eindex, name, values)
-        except Exception, e:
-            raise RuntimeError("Error setting GEM attribute: %s" % str(e))
-
     def regenModel(self):
         if self._model is not None:
             try:
@@ -179,7 +107,7 @@ class GEMParametricGeometry(Container):
                 if (flag & 2):
                     outputs.append((name, paramID, val, meta))
 
-        return params
+        return outputs
 
     def setParameter(self, name, val):
         """Set new value for a driving parameter.
@@ -213,6 +141,78 @@ class GEMParametricGeometry(Container):
     #                                                    \t  istate      \n\
     #                                                    Returns:        \n\
     #                                                    \t  <none>      "},
+    # def getAttrById(self, obj, objtype, eindex, aindex):
+    #     """Get Attribute of a GEMobject.
+
+    #     obj: reference
+    #         A reference to a GEM object
+
+    #     objtype: str
+    #         One of ['CONTEXT', 'MODEL', 'BRANCH', 'PARAM', 'BREP', 'NODE', 'EDGE',
+    #                 'LOOP', 'FACE', or 'SHELL']
+
+    #     eindex: int <bias-1>
+    #         ???
+
+    #     aindex: int <bias-1>
+    #         ???
+
+    #     Returns (name, values)
+    #     """
+    #     try:
+    #         return gem.getAttribute(obj, objtype, eindex, aindex)
+    #     except Exception, e:
+    #         raise RuntimeError("GEM getAttribute failed: %s" % str(e))
+
+    # def getAttrByName(self, obj, objtype, eindex, name):
+    #     """Get Attribute of a GEMobject.
+
+    #     obj: reference
+    #         A reference to a GEM object
+
+    #     objtype: str
+    #         One of ['CONTEXT', 'MODEL', 'BRANCH', 'PARAM', 'BREP', 'NODE', 'EDGE',
+    #                 'LOOP', 'FACE', or 'SHELL']
+
+    #     eindex: int <bias-1>
+    #         ???
+
+    #     name: str
+    #         Name of the attribute
+
+    #     Returns (index <bias-1>, values)
+    #     """
+    #     try:
+    #         return gem.retAttribute(obj, objtype, eindex, name)
+    #     except Exception, e:
+    #         raise RuntimeError(": %s" % str(e))
+
+    # def setAttribute(self, obj, objtype, eindex, name, values):
+    #     """Set an Attribute for a GEM object.
+
+    #     obj: reference
+    #         A reference to a GEM object.
+
+    #     objtype: str
+    #         One of ['CONTEXT', 'MODEL', 'BRANCH', 'PARAM', 'BREP', 'NODE',
+    #                 'EDGE', 'LOOP', 'FACE', or 'SHELL']
+
+    #     eindex: int
+    #         Entitiy index <bias-1>
+
+    #     name: str
+    #         Name of the Attribute.
+
+    #     values: tuple
+    #         Value(s) to assign to the Attribute.
+
+    #     Returns None.
+    #     """
+    #     try:
+    #         return gem.setAttribute(self, obj, objtype, eindex, name, values)
+    #     except Exception, e:
+    #         raise RuntimeError("Error setting GEM attribute: %s" % str(e))
+
     # def staticModel(self):
     #     """Generate empty static Model."""
     #     try:
