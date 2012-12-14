@@ -94,6 +94,10 @@ setup(name=pkg_name,
           pkg_name: ['test/*.py', 'test/*.csm', 'test/*.col'] +
                       lib_stuff
        },
+       entry_points = """
+      [openmdao.parametric_geometry]
+      pygem_diamond.pygem.GEMParametricGeometry = pygem_diamond.pygem:GEMParametricGeometry
+      """
       )
 
 

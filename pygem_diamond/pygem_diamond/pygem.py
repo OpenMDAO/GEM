@@ -1,8 +1,9 @@
 
 import os
 
-from openmdao.main.api import Container
+from openmdao.main.api import Container, implements
 from openmdao.main.datatypes.api import Str
+from openmdao.main.interfaces import IParametricGeometry
 
 from pygem_diamond import gem
 
@@ -23,11 +24,15 @@ class GEMParametricGeometry(Container):
     implements the IParametricGeometry interface.
     """
 
+    implements(IParametricGeometry)
+
     model_file = Str('')
 
     def __init__(self):
+        super(GEMParametricGeometry, self).__init__()
         self._model = None
         self._idhash = {}
+        self._callbacks = []
         self._context = gem.initialize()
 
     def _model_file_changed(self, name, old, new):
@@ -35,9 +40,8 @@ class GEMParametricGeometry(Container):
 
     def load_model(self, filename):
         """Load a model from a file."""
-        # clean up the old model if there is one
-        if self._model is not None:
-            gem.releaseModel(self._model)
+
+        old_model = self._model
 
         self._idhash = {}
         self._model = None
@@ -47,20 +51,24 @@ class GEMParametricGeometry(Container):
                 if not os.path.isfile(filename):
                     raise IOError("file '%s' not found." % filename)
                 self._model = gem.loadModel(self._context, filename)
-        except Exception, e:
-            raise RuntimeError("problem loading GEM model file '%s': %s" % (filename, str(e)))
-        return self._model
+        except Exception as err:
+            self._model = old_model
+            raise RuntimeError("problem loading GEM model file '%s': %s" % (filename, str(err)))
+        finally:
+            # clean up the old model if there is one
+            if old_model is not self._model and old_model is not None:
+                gem.releaseModel(old_model)
+        for cb in self._callbacks:
+            cb()
 
-    def terminate(self):
-        """Terminate GEM context."""
-        gem.terminate(self._context)
+        return self._model
 
     def regenModel(self):
         if self._model is not None:
             try:
                 return gem.regenModel(self._model)
-            except Exception, e:
-                raise RuntimeError("Error regenerating model: %s" % str(e))
+            except Exception as err:
+                raise RuntimeError("Error regenerating model: %s" % str(err))
 
     def listParameters(self):
         """Return a list of parameters (inputs and outputs) for this model.
@@ -71,6 +79,8 @@ class GEMParametricGeometry(Container):
             nparams = tup[5]
             for paramID in range(1, nparams + 1):
                 name, flag, order, values, nattr = gem.getParam(self._model, paramID)
+                if name.startswith('@'):
+                    name = name[1:]
                 self._idhash[name] = paramID
                 meta = {}
                 if flag & 8:  # check if param has limits
@@ -79,7 +89,9 @@ class GEMParametricGeometry(Container):
                     meta['low'] = low
                 else:
                     high = low = None
-                if len(values) > 1:
+                if isinstance(values, basestring):
+                    val = values
+                elif len(values) > 1:
                     val = list(values)
                 else:
                     val = values[0]
@@ -103,20 +115,34 @@ class GEMParametricGeometry(Container):
             if not isinstance(val, (float, int, str)):
                 val = tuple(val)
             return gem.setParam(self._model, paramID, val)
-        except Exception, e:
-            raise RuntimeError("Error setting parameter '%s': %s" % (name, str(e)))
+        except Exception as err:
+            raise RuntimeError("Error setting parameter '%s': %s" % (name, str(err)))
+
+    def getParameter(self, name):
+        """Get info about a Parameter in a Model"""
+        if self._model is not None and len(self._idhash) == 0:
+            self.listParams()   # populate params dict
+        try:
+            pname, bflag, order, values, nattr = gem.getParam(self._model, self._idhash[name])
+        except Exception as err:
+            raise RuntimeError("Error getting parameter '%s': %s" % (name, str(err)))
+        if isinstance(values, basestring):
+            val = values
+        elif len(values) > 1:
+            val = list(values)
+        else:
+            val = values[0]
+        return val
+
+    def register_param_list_changedCB(self, callback):
+        if callback not in self._callbacks:
+            self._callbacks.append(callback)
+
+    def terminate(self):
+        """Terminate GEM context."""
+        gem.terminate(self._context)
 
 
-    # {"getParam",      gemGetParam,      METH_VARARGS,  "Get info about a Parameter in a Model\n\n\
-    #                                                    Input arguments:\n\
-    #                                                    \t  modelObj    \n\
-    #                                                    \t  iparam      <bias-1>\n\
-    #                                                    Returns:        \n\
-    #                                                    \t  pname       \n\
-    #                                                    \t  bflag       \n\
-    #                                                    \t  order       \n\
-    #                                                    \t  (values)    \n\
-    #                                                    \t  nattr       "},
     # {"setSuppress",   gemSetSuppress,   METH_VARARGS,  "Change suppression state for a Branch\n\n\
     #                                                    Input arguments:\n\
     #                                                    \t  modelObj    \n\
