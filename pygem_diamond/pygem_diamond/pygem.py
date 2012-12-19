@@ -26,14 +26,15 @@ class GEMParametricGeometry(Container):
 
     implements(IParametricGeometry)
 
-    model_file = Str('')
+    model_file = Str('', iotype='in')
 
-    def __init__(self):
+    def __init__(self, mfile=''):
         super(GEMParametricGeometry, self).__init__()
         self._model = None
         self._idhash = {}
         self._callbacks = []
         self._context = gem.initialize()
+        self.model_file = mfile
 
     def _model_file_changed(self, name, old, new):
         self.load_model(os.path.expanduser(self.model_file))
@@ -112,7 +113,11 @@ class GEMParametricGeometry(Container):
             self.listParams()   # populate params dict
         try:
             paramID = self._idhash[name]
-            if not isinstance(val, (float, int, str)):
+            if isinstance(val, (float, int)):
+                val = (val,)
+            elif isinstance(val, basestring):
+                pass
+            else:
                 val = tuple(val)
             return gem.setParam(self._model, paramID, val)
         except Exception as err:
