@@ -1,8 +1,7 @@
 
 import os
 
-from openmdao.main.api import Container, implements
-from openmdao.main.datatypes.api import Str
+from openmdao.main.api import implements
 from openmdao.main.interfaces import IParametricGeometry
 
 from pygem_diamond import gem
@@ -35,35 +34,31 @@ class GEMParametricGeometry(object):
         self.model_file = mfile
 
     def __setattr__(self, name, value):
-        object.__setattr__(self, name, value)
-        if name == 'model_file' and value != '':
+        if name == 'model_file':
             self.load_model(os.path.expanduser(value))
-
-    #def _model_file_changed(self, name, old, new):
-        #self.load_model(os.path.expanduser(self.model_file))
+        else:
+            object.__setattr__(self, name, value)
 
     def load_model(self, filename):
         """Load a model from a file."""
 
-        old_model = self._model
+        if self._model is not None:
+            gem.releaseModel(self._model)
 
         self._idhash = {}
-        self._model = None
+        object.__setattr__(self, '_model', None)
 
         try:
-            if filename is not None:
-                if not os.path.isfile(filename):
+            if filename:
+                if os.path.isfile(filename):
+                    object.__setattr__(self, '_model', 
+                                       gem.loadModel(self._context, filename))
+                else:
                     raise IOError("file '%s' not found." % filename)
-                self._model = gem.loadModel(self._context, filename)
-        except Exception as err:
-            self._model = old_model
-            raise RuntimeError("problem loading GEM model file '%s': %s" % (filename, str(err)))
         finally:
-            # clean up the old model if there is one
-            if old_model is not self._model and old_model is not None:
-                gem.releaseModel(old_model)
-        for cb in self._callbacks:
-            cb()
+            object.__setattr__(self, 'model_file', filename)
+            for cb in self._callbacks:
+                cb()
 
         return self._model
 
