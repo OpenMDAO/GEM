@@ -19,14 +19,12 @@ from pygem_diamond import gem
 #         pass
 
 
-class GEMParametricGeometry(Container):
+class GEMParametricGeometry(object):
     """A wrapper for a GEM object with modifiable parameters.  This object
     implements the IParametricGeometry interface.
     """
 
     implements(IParametricGeometry)
-
-    model_file = Str('', iotype='in')
 
     def __init__(self, mfile=''):
         super(GEMParametricGeometry, self).__init__()
@@ -36,8 +34,13 @@ class GEMParametricGeometry(Container):
         self._context = gem.initialize()
         self.model_file = mfile
 
-    def _model_file_changed(self, name, old, new):
-        self.load_model(os.path.expanduser(self.model_file))
+    def __setattr__(self, name, value):
+        object.__setattr__(self, name, value)
+        if name == 'model_file' and value != '':
+            self.load_model(os.path.expanduser(value))
+
+    #def _model_file_changed(self, name, old, new):
+        #self.load_model(os.path.expanduser(self.model_file))
 
     def load_model(self, filename):
         """Load a model from a file."""
@@ -147,6 +150,22 @@ class GEMParametricGeometry(Container):
         """Terminate GEM context."""
         gem.terminate(self._context)
 
+    def get_attributes(self, io_only=True):
+        """Return an attribute dict for use by the GUI.
+        """
+        
+        return {
+            'type': type(self).__name__,
+            'Inputs': [
+                {
+                    'name': 'model_file',
+                    'id': 'model_file',
+                    'type': type(self.model_file).__name__,
+                    'value': self.model_file,
+                    'connected': '',
+                }
+            ]
+        }
 
     # {"setSuppress",   gemSetSuppress,   METH_VARARGS,  "Change suppression state for a Branch\n\n\
     #                                                    Input arguments:\n\
