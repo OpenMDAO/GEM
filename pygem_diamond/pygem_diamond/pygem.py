@@ -143,10 +143,13 @@ class GEMParametricGeometry(object):
 
     def terminate(self):
         """Terminate GEM context."""
+        if self._model is not None:
+            gem.releaseModel(self._model)
+            self._model = None
         gem.terminate(self._context)
 
     def get_attributes(self, io_only=True):
-        """Return an attribute dict for use by the GUI.
+        """Return an attribute dict for use by the openmdao GUI.
         """
         
         return {
