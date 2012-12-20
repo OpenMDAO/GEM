@@ -116,7 +116,7 @@ class GEMParametricGeometry(Container):
             if isinstance(val, (float, int)):
                 val = (val,)
             elif isinstance(val, basestring):
-                pass
+                val = str(val)
             else:
                 val = tuple(val)
             return gem.setParam(self._model, paramID, val)

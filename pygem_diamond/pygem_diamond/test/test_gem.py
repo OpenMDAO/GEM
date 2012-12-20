@@ -409,8 +409,6 @@ end
         geom = GEMParametricGeometry()
         geom.model_file = self.model_file
         params = geom.listParameters()
-        with open('junk.out', 'w') as f:
-            f.write(pprint.pformat(params)+'\n')
         self.assertEqual('', pprint.pformat(params))
 
 
