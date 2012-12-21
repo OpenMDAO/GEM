@@ -1,5 +1,8 @@
 *.wpr
 *.wpu
+*.pyc
+*.pyo
+*.pyd
 genEnv.sh
 genEnv.csh
 

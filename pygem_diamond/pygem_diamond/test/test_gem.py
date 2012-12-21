@@ -1,9 +1,12 @@
 # test suite for gem.so
 
 import os
+import tempfile
+import shutil
+
 import unittest
 from pygem_diamond import gem
-import numpy
+from pygem_diamond.pygem import GEMParametricGeometry
 
 sample_file = os.path.join(os.path.dirname(__file__), "sample.csm")
 
@@ -113,20 +116,20 @@ class PygemTestCase(unittest.TestCase):
         massProps1 = gem.getMassProps(myBReps[0], "BREP", 0)
         massProps2 = gem.getMassProps(myBReps[1], "BREP", 0)
 
-        self.assertAlmostEqual(massProps1[ 0],  8*massProps2[ 0]  )     # volume
-        self.assertAlmostEqual(massProps1[ 1],  4*massProps2[ 1]  )     # surface area
-        self.assertAlmostEqual(massProps1[ 2],  2*massProps2[ 2]-4)     # xcg
-        self.assertAlmostEqual(massProps1[ 3],  2*massProps2[ 3]  )     # ycg
-        self.assertAlmostEqual(massProps1[ 4],  2*massProps2[ 4]  )     # zcg
-        self.assertAlmostEqual(massProps1[ 5], 32*massProps2[ 5]  )     # Ixx
-        self.assertAlmostEqual(massProps1[ 6], 32*massProps2[ 6]  )     # Ixy
-        self.assertAlmostEqual(massProps1[ 7], 32*massProps2[ 7]  )     # Ixz
-        self.assertAlmostEqual(massProps1[ 8], 32*massProps2[ 8]  )     # Iyx
-        self.assertAlmostEqual(massProps1[ 9], 32*massProps2[ 9]  )     # Iyy
-        self.assertAlmostEqual(massProps1[10], 32*massProps2[10]  )     # Iyz
-        self.assertAlmostEqual(massProps1[11], 32*massProps2[11]  )     # Izx
-        self.assertAlmostEqual(massProps1[12], 32*massProps2[12]  )     # Izy
-        self.assertAlmostEqual(massProps1[13], 32*massProps2[13]  )     # Izz
+        self.assertAlmostEqual(massProps1[0],   8 * massProps2[0])     # volume
+        self.assertAlmostEqual(massProps1[1],   4 * massProps2[1])     # surface area
+        self.assertAlmostEqual(massProps1[2],   2 * massProps2[2] - 4)     # xcg
+        self.assertAlmostEqual(massProps1[3],   2 * massProps2[3])     # ycg
+        self.assertAlmostEqual(massProps1[4],   2 * massProps2[4])     # zcg
+        self.assertAlmostEqual(massProps1[5],  32 * massProps2[5])     # Ixx
+        self.assertAlmostEqual(massProps1[6],  32 * massProps2[6])     # Ixy
+        self.assertAlmostEqual(massProps1[7],  32 * massProps2[7])     # Ixz
+        self.assertAlmostEqual(massProps1[8],  32 * massProps2[8])     # Iyx
+        self.assertAlmostEqual(massProps1[9],  32 * massProps2[9])     # Iyy
+        self.assertAlmostEqual(massProps1[10], 32 * massProps2[10])     # Iyz
+        self.assertAlmostEqual(massProps1[11], 32 * massProps2[11])     # Izx
+        self.assertAlmostEqual(massProps1[12], 32 * massProps2[12])     # Izy
+        self.assertAlmostEqual(massProps1[13], 32 * massProps2[13])     # Izz
 
         gem.releaseModel(newModel)
         gem.releaseModel(myModel)
@@ -180,6 +183,7 @@ class PygemTestCase(unittest.TestCase):
 
         gem.releaseModel(myModel)
         gem.terminate(myContext)
+
 
     # test: gem.initialize
     #       gem.loadModel
@@ -324,7 +328,6 @@ class PygemTestCase(unittest.TestCase):
         myDRep    = gem.newDRep(myModel)
         gem.tesselDRep(myDRep, 0, 0, 0, 0)
 
-        iface = 1
         triArray, xyzArray = gem.getTessel(myDRep, 1, 1)
 
         npnt = (xyzArray.shape)[0]
@@ -347,8 +350,69 @@ class PygemTestCase(unittest.TestCase):
     #              gem.plotDRep
     #              gem.saveModel
     #              gem.solidBoolean
-    def test_untested(self):
-        pass
+
+
+class GEMParametricGeometryTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.csm_input = """
+# bottle2 (from OpenCASCADE tutorial)
+# written by John Dannenhoffer
+
+# default design parameters
+despmtr   width               10.00
+despmtr   depth                4.00
+despmtr   height              15.00
+despmtr   neckDiam             2.50
+despmtr   neckHeight           3.00
+despmtr   wall                 0.20     wall thickness (in neck)
+despmtr   filRad1              0.25     fillet radius on body of bottle
+despmtr   filRad2              0.10     fillet radius between bottle and neck
+
+# basic bottle shape (filletted)
+
+set       baseHt    height-neckHeight
+
+skbeg     -width/2  -depth/4  0
+   cirarc 0         -depth/2  0         +width/2  -depth/4  0
+   linseg +width/2  +depth/4  0
+   cirarc 0         +depth/2  0         -width/2  +depth/4  0
+   linseg -width/2  -depth/4  0
+skend
+extrude   0         0         baseHt
+fillet    filRad1
+
+# neck
+cylinder  0         0         baseHt    0         0         height      neckDiam/2
+
+# join the neck to the bottle and apply a fillet at the union
+union
+fillet    filRad2
+
+# hollow out bottle
+hollow    wall      18
+
+end
+        """
+        self.tdir = tempfile.mkdtemp()
+        self.model_file = os.path.join(self.tdir, 'bottle.csm')
+        with open(self.model_file, 'w') as f:
+            f.write(self.csm_input)
+
+    def tearDown(self):
+        shutil.rmtree(self.tdir)
+
+    def test_GEMParametricGeometry(self):
+        geom = GEMParametricGeometry()
+        geom.model_file = self.model_file
+        params = geom.listParameters()
+        expected_inputs = set(['width', 'depth', 'height', 
+            'neckDiam', 'neckHeight', 'wall',
+            'filRad1', 'filRad2'])
+        self.assertEqual(expected_inputs, 
+            set([k for k,v in params if v['iotype']=='in']))
+        geom.terminate()
+
 
 if __name__ == "__main__":
     unittest.main()

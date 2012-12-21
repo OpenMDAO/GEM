@@ -83,15 +83,21 @@ module1 = Extension(pkg_name + '.gem',
 #    'requires', 'provides', 'obsoletes'
 
 setup(name=pkg_name,
-       version='0.9.1',
+       version='0.9.3',
        description='Python interface to GEM using OpenCSM and EGADS',
        zip_safe=False,
        ext_modules=[module1],
        packages=[pkg_name],
+       package_dir={'': '.'},
+       include_package_data=True,
        package_data={
           pkg_name: ['test/*.py', 'test/*.csm', 'test/*.col'] +
                       lib_stuff
        },
+       entry_points = """
+      [openmdao.parametric_geometry]
+      pygem_diamond.pygem.GEMParametricGeometry = pygem_diamond.pygem:GEMParametricGeometry
+      """
       )
 
 

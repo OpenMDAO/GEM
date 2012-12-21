@@ -5,7 +5,6 @@ import subprocess
 from os.path import join, dirname, basename, abspath, expanduser, isdir, isfile, expandvars
 import platform
 import shutil
-import StringIO
 import fnmatch
 import struct
 
@@ -43,7 +42,7 @@ def osx_hack(options, env, arch, srcdir, gv=None):
         xtras = ' -u _gixCADLoad -u _gibFillCoord -u _gibFillDNodes -u _gibFillQMesh -u _gibFillQuads -u _gibFillSpecial -u _gibFillTris -u _giiFillAttach -u _giuDefineApp -u _giuProgress -u _giuRegisterApp -u _giuSetEdgeTs -u _giuWriteApp -framework CoreFoundation -framework IOKit'
         cmd = "gcc-4.2 -Wl,-F. -bundle -undefined dynamic_lookup %(PYARCH)s %(OBJFNAME)s -L%(GEM_BLOC)s/lib -L%(CAPRILIB)s -L/usr/X11/lib -lgem -lquartz -lgem -lquartz -lcapriDyn -ldcapri" % dct
         if gv:
-            cmd = cmd + " -lgv -lGLU -lGL -lX11 -lXext -lpthread -o %(LIBFNAME)s " % dct + extras
+            cmd = cmd + " -lgv -lGLU -lGL -lX11 -lXext -lpthread -o %(LIBFNAME)s " % dct + xtras
             if mac_ver == '10.5':
                 cmd = cmd + " -dylib_file /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib:/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/libGL.dylib"
         else:
@@ -168,6 +167,8 @@ if __name__ == '__main__':
                         help="do a make clean before building")
     parser.add_argument("--bdist_egg", action="store_true", dest="bdist_egg",
                         help="build a binary egg for pygem")
+    parser.add_argument("--develop", action="store_true", dest="develop",
+                        help="build a 'develop' dist for pygem")
     parser.add_argument("--sdist", action="store_true", dest="sdist",
                         help="build a source distribution for pygem")
     parser.add_argument("--gv", action="store_true", dest="gv",
@@ -266,12 +267,12 @@ if __name__ == '__main__':
         env['CAPRIINC'] = expanduser(options.capriinc)
         env['CAPRIkey'] = _get_capri_key(env['CAPRILIB'])
         if sys.platform.startswith('linux'):
-            #env['LDSHARED'] = 'gcc -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions'
-            env['LDSHARED'] = 'gcc -pthread -shared -Wl,-O1'
+            #env['LDSHARED'] = '"gcc -pthread -shared -Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-Bsymbolic-functions -Wl,-z,relro"'
+            env['LDSHARED'] = '"gcc -pthread -shared -fPIC -Wl,-O1 -Wl,-z,relro"'
 
     if options.gv:
         env['GEM_GRAPHICS'] = 'gv'
-    
+
     # generate some shell scripts here to set up the environment for those
     # that want to do things by running make directly
     shfile = open('gemEnv.sh', 'w')
@@ -283,10 +284,13 @@ if __name__ == '__main__':
     finally:
         shfile.close()
         cshfile.close()
-        
+
+    if 'LDSHARED' in env:
+        env['LDSHARED'] = env['LDSHARED'].strip('"')
+
     # update the current environment
     os.environ.update(env)
-    
+
     # we'll do a make in these directories
     srcdirs = [join(env['GEM_BLOC'], 'src'),
                join(env['GEM_BLOC'], options.gem_type)]
@@ -356,14 +360,19 @@ if __name__ == '__main__':
 
     # build a binary egg distribution
     if options.bdist_egg:
-        ret = subprocess.call("python setup.py bdist_egg", 
-                              shell=True, env=os.environ, 
+        ret = subprocess.call("python setup.py bdist_egg",
+                              shell=True, env=os.environ,
+                              cwd=dirname(dirname(pygem_libdir)))
+        
+    if options.develop:
+        ret = subprocess.call("python setup.py develop",
+                              shell=True, env=os.environ,
                               cwd=dirname(dirname(pygem_libdir)))
         
     # build a source distribution
     if options.sdist:
-        ret = subprocess.call("python setup.py sdist", 
-                              shell=True, env=os.environ, 
+        ret = subprocess.call("python setup.py sdist",
+                              shell=True, env=os.environ,
                               cwd=dirname(dirname(pygem_libdir)))
 
-  
+
