@@ -293,6 +293,8 @@ gem_newDRep(gemModel *model, gemDRep **drep)
   for (i = 0; i < model->nBRep; i++) {
     trep[i].nFaces = 0;
     trep[i].Faces  = NULL;
+    trep[i].nEdges = 0;
+    trep[i].Edges = NULL;
   }
   drp = (gemDRep *) gem_allocate(sizeof(gemDRep));
   if (drp == NULL) {
