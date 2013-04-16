@@ -544,8 +544,6 @@ gem_clrDReps(gemModel *model, int phase)
   
   /* cleanup/refill any DReps attached to this model */
 
-  do {
-    hit  = 0;
     drep = cntxt->drep;
     while (drep != NULL) {
       if (drep->model == model) {
@@ -596,7 +594,7 @@ gem_clrDReps(gemModel *model, int phase)
           }
 
         } else {
-        
+
           /* repopulate */
           trep = (gemTRep *) gem_allocate(model->nBRep*sizeof(gemTRep));
           if (trep != NULL) {
@@ -610,12 +608,9 @@ gem_clrDReps(gemModel *model, int phase)
             drep->TReps  = trep;  
           }
         }
-        hit++;
-        break;
       }
       drep = drep->next;
     }
-  } while (hit != 0);
 
   return GEM_SUCCESS;
 }
