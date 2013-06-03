@@ -3,7 +3,7 @@
  *
  *             Top-level GEM Include
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -59,6 +59,8 @@
 #define GEM_BADNAME       -332
 #define GEM_UNSUPPORTED   -333
 #define GEM_BADMETHOD     -334
+#define GEM_MISMATCH      -335
+#define GEM_DEGENERATE    -336
 
 
 /* Topologcal/Attribute Entity Types */
@@ -85,6 +87,7 @@
 #define GEM_REAL		 2
 #define GEM_STRING		 3
 #define GEM_SPLINE 		 4
+#define GEM_POINTER              5
 
 
 /* Solid Boolean Operators */

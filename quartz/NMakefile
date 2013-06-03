@@ -7,8 +7,9 @@ LDIR = $(GEM_BLOC)\lib
 TDIR = $(GEM_BLOC)\test
 
 OBJS = qbraattr.obj qboolean.obj qclose.obj  qequiv.obj   qinit.obj qload.obj \
-	qmprops.obj qrelease.obj qtessel.obj qtopattr.obj qeval.obj qevald.obj \
-	qcurva.obj  qinside.obj  qregen.obj  qcopy.obj    qsave.obj
+	qmprops.obj qrelease.obj qtessel.obj qtopattr.obj qevald.obj \
+	qcurva.obj qregen.obj qcopy.obj qsave.obj qsamesrf.obj qeval.obj \
+	qieval.obj
 
 default:	start $(TDIR)\qtest.exe end
 

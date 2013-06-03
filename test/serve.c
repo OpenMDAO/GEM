@@ -3,7 +3,7 @@
  *
  *             Tessellation Test Code
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -36,12 +36,11 @@
   static gemBRep   **BReps;
   static gemModel  *model;
   static wvContext *cntxt;
-  static FILE *outfp;
 
 
 static int makeTess(int flag)
 {
-  int     i, j, jj, k, status, type, nnode, nedge, nloop, nface, nshell, ntris;
+  int     i, j, k, status, type, nnode, nedge, nloop, nface, nshell, ntris;
   int     head, nattr, npts, attrs, itri, nseg, *segs, igprim, nitem, *tris;
   float   box[6], focus[4], color[3], *xyzs;
   double  bx[6], *points, size;
@@ -53,6 +52,7 @@ static int makeTess(int flag)
   if (flag != 0) wv_removeAll(cntxt);
   
   status = gem_newDRep(model, &DRep);
+  printf(" gem_newDRep = %d\n", status);
   if (status != GEM_SUCCESS)  return status;
 
   for (i = 0; i < nBRep; i++) {
@@ -88,51 +88,32 @@ static int makeTess(int flag)
   focus[2] = 0.5*(box[2] + box[5]);
   focus[3] = size;
 
-    fprintf(outfp, "angle=%f, relSide=%f, relSag=%f\n", angle, relSide, relSag);
-    fprintf(outfp, "box=[%f, %f, %f, %f, %f, %f]\n", box[0],box[1],box[2],box[3],box[4],box[5]);
-    fprintf(outfp, "focus=[%f, %f, %f, %f]\n\n", focus[0], focus[1], focus[2], focus[3]);
-
   status = gem_tesselDRep(DRep, 0, angle, relSide*focus[3], relSag*focus[3]);
   printf(" gem_tesselDRep = %d\n", status);
   
   for (i = 0; i < nBRep; i++) {
-      fprintf(outfp, "BRep=%d\n", i);
-  bface.BRep = i+1;
+    bface.BRep = i+1;
     status = gem_getBRepInfo(BReps[i], bx, &type, &nnode, &nedge,
                              &nloop, &nface, &nshell, &nattr);
     if (status != GEM_SUCCESS) continue;
 
-    fprintf(outfp, "nface=%d\n", nface);
-
     for (j = 0; j < nface; j++) {
       bface.index = j+1;
-      fprintf(outfp, "face=%d\n", bface.index);
       status = gem_getTessel(DRep, bface, &ntris, &npts, &tris, &points);
       if (status != GEM_SUCCESS)
         printf(" BRep #%d: gem_getTessel status = %d\n", i+1, status);
       sprintf(gpname, "Body %d Face %d", bface.BRep, bface.index);
       attrs = WV_ON | WV_ORIENTATION; 
       /* vertices */
-      fprintf(outfp, "npts, ntris = %d, %d\n", npts, ntris);
-      fprintf(outfp, "vertices:\n");
-      for(jj=0; jj<npts; jj++) {
-        fprintf(outfp, "%f, %f, %f\n", points[jj*3], points[1+jj*3], points[2+jj*3]);
-      }
-
       wv_setData(WV_REAL64, npts, points, WV_VERTICES, &items[0]);
       wv_adjustVerts(&items[0], focus);
       /* triangles */
-      fprintf(outfp, "triangles:\n");
-      for(jj=0; jj<ntris; jj++) {
-        fprintf(outfp, "%d, %d, %d\n", tris[jj*3],tris[1+jj*3],tris[2+jj*3]);
-      }
       wv_setData(WV_INT32, 3*ntris, tris, WV_INDICES, &items[1]);
       /* triangle colors */
       color[0] = 1.0;
       color[1] = 0.0;
       color[2] = 0.0;
       if (nBRep > 1) color[1] = i/(nBRep-1.0);
-      fprintf(outfp, "colors: %f, %f, %f\n", color[0],color[1],color[2]);
       wv_setData(WV_REAL32, 1, color, WV_COLORS, &items[2]);
       nitem = 3;
       /* triangle sides (segments) */
@@ -145,31 +126,23 @@ static int makeTess(int flag)
             segs[2*nseg+1] = tris[3*itri+(k+2)%3];
             nseg++;
           }
-            fprintf(outfp, "nseg=%d\nsegs:\n", nseg);
-            for(jj=0; jj<2*nseg; jj++) {
-              fprintf(outfp, "%d\n", segs[jj]);
-            }
         wv_setData(WV_INT32, 2*nseg, segs, WV_LINDICES, &items[3]);
         free(segs);
         /* segment colors */
         color[0] = 0.0;
         color[1] = 0.0;
         color[2] = 0.0;
-        fprintf(outfp, "seg colors: %f, %f, %f\n", color[0],color[1],color[2]);
         wv_setData(WV_REAL32, 1, color, WV_LCOLOR, &items[4]);
       }
 
       /* make graphic primitive */
       if (cntxt != NULL) {
-        fprintf(outfp, "adding GPRim, attr=%d, nitems=%d\n\n", attrs, nitem);
         igprim = wv_addGPrim(cntxt, gpname, WV_TRIANGLE, attrs, nitem, items);
         if (igprim >= 0) {
-          fprintf(outfp, "igprim = %d\n", igprim);
           /* make line width 1 */
           if (cntxt->gPrims != NULL) cntxt->gPrims[igprim].lWidth = 1.0;
-          wv_printGPrim(cntxt, igprim);
         } else {
-          printf("addGPrim for %s returned %d\n", gpname, igprim);
+          printf(" addGPrim for %s = %d\n", gpname, igprim);
         }
       }
     }
@@ -177,7 +150,6 @@ static int makeTess(int flag)
     for (j = 0; j < nedge; j++) {
       /* name and attributes */
       bface.index = j+1;
-      fprintf(outfp, "edge=%d\n", bface.index);
       sprintf(gpname, "Body %d Edge %d", bface.BRep, j+1);
       attrs  = WV_ON;
       status = gem_getDiscrete(DRep, bface, &npts, &points);
@@ -186,8 +158,6 @@ static int makeTess(int flag)
       head = npts - 1;
       xyzs = (float *) malloc(6*head*sizeof(float));
       if (xyzs == NULL) continue;
-        fprintf(outfp, "npts= %d\n", npts);
-            fprintf(outfp, "edge points:\n");
       for (nseg = 0; nseg < head; nseg++) {
         xyzs[6*nseg  ] = points[3*nseg  ];
         xyzs[6*nseg+1] = points[3*nseg+1];
@@ -195,9 +165,6 @@ static int makeTess(int flag)
         xyzs[6*nseg+3] = points[3*nseg+3];
         xyzs[6*nseg+4] = points[3*nseg+4];
         xyzs[6*nseg+5] = points[3*nseg+5];
-             fprintf(outfp, "%f, %f, %f, %f, %f, %f\n",xyzs[6*nseg  ],
-                        xyzs[6*nseg+1],xyzs[6*nseg+2],xyzs[6*nseg+3],xyzs[6*nseg+4],
-                        xyzs[6*nseg+5]);
       }
       /* vertices */
       wv_setData(WV_REAL32, 2*nseg, xyzs, WV_VERTICES, &items[0]);
@@ -207,29 +174,21 @@ static int makeTess(int flag)
       color[0] = 0.0;
       color[1] = 0.0;
       color[2] = 1.0;
-        fprintf(outfp, "edge colors: %f, %f, %f\n", color[0],color[1],color[2]);
       wv_setData(WV_REAL32, 1, color, WV_COLORS, &items[1]);
       /* make graphic primitive */
       if (cntxt != NULL) {
-        fprintf(outfp, "adding GPRim, attr=%d, nitems=2\n", attrs);
         igprim = wv_addGPrim(cntxt, gpname, WV_LINE, attrs, 2, items);
         if (igprim >= 0) {
           /* make line width 1.5 */
           if (cntxt->gPrims != NULL) cntxt->gPrims[igprim].lWidth = 1.5;
           if (head != 0) wv_addArrowHeads(cntxt, igprim, 0.05, 1, &head);
-          fprintf(outfp, "igprim = %d\n", igprim);
-          /* make line width 1 */
-          if (cntxt->gPrims != NULL) cntxt->gPrims[igprim].lWidth = 1.0;
-          wv_printGPrim(cntxt, igprim);
         } else {
-          printf("addGPrim for %s returned %d\n", gpname, igprim);
+          printf(" addGPrim for %s = %d\n", gpname, igprim);
         }
       }
     }
 
   }  
-
-  fclose(outfp);
 
   status = gem_destroyDRep(DRep);
   printf(" gem_destroyDRep = %d\n", status);
@@ -247,10 +206,6 @@ int main(int argc, char *argv[])
   float    eye[3]    = {0.0, 0.0, 7.0};
   float    center[3] = {0.0, 0.0, 0.0};
   float    up[3]     = {0.0, 1.0, 0.0};
-
-  remove("/home/bret/cgprims.out");
-  remove("/home/bret/cserver_buff.out");
-  outfp = fopen("/home/bret/gemsrv.out", "w");
 
   status = gem_initialize(&context);
   printf(" gem_initialize = %d\n", status);

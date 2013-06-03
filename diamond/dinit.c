@@ -3,7 +3,7 @@
  *
  *             Kernel Initialization Function -- OpenCSM & EGADS
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -22,14 +22,15 @@
 int
 gem_kernelInit()
 {
-  int major, minor;
+  int        major, minor;
+  const char *occ_rev;
   
   if (dia_context != NULL) return EGADS_EMPTY;
   
   ocsmVersion(&major, &minor);
   printf("\n GEM Info: Using OpenCSM %d.%02d\n", major, minor);
-  EG_revision(&major, &minor);
-  printf(" GEM Info: Using EGADS   %d.%02d\n\n", major, minor);
+  EG_revision(&major, &minor, &occ_rev);
+  printf(" GEM Info: Using EGADS   %d.%02d with %s\n\n", major, minor, occ_rev);
 
   return EG_open(&dia_context);
 }

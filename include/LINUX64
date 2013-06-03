@@ -1,6 +1,6 @@
 #LINUX 64 bit:
 #
-CCOMP  = gcc -m64 -g -pthread
+CCOMP  = gcc -m64 -g
 COPTS  = -O -fno-unit-at-a-time -fPIC
 LOPTS  = rs
 RANLB  =

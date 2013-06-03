@@ -3,7 +3,7 @@
  *
  *             Kernel Curvature Compute Function -- EGADS
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -138,29 +138,28 @@ gem_kernelCurvCalc(double *results, int sense, double *curva)
 int
 gem_kernelCurvature(gemDRep *drep, int bound, int vs, double *curv)
 {
-  int      i, j, k, ibrep, iface, stat;
+  int      b, j, k, m, stat;
   double   results[18];
+  gemPair  bface;
   gemModel *mdl;
   gemBRep  *brep;
   ego      face;
 
-  if (drep->bound[bound-1].VSet[vs-1].quilt == NULL) return GEM_NOTPARAMBND;
   mdl = drep->model;
+  b   = bound - 1;
+  if (drep->bound[b].VSet[vs-1].quilt == NULL) return GEM_NOTPARAMBND;
   
-  for (j = 0; j < drep->bound[bound-1].VSet[vs-1].quilt->nGpts; j++) {
-    i = j;
-    if (drep->bound[bound-1].VSet[vs-1].quilt->geomIndices != NULL)
-      i = drep->bound[bound-1].VSet[vs-1].quilt->geomIndices[j] - 1;
-    if (drep->bound[bound-1].VSet[vs-1].quilt->points[i].nFaces > 2) {
-      k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.multi[0]-1;
+  for (j = 0; j < drep->bound[b].VSet[vs-1].quilt->nPoints; j++) {
+    if (drep->bound[bound-1].VSet[vs-1].quilt->points[j].nFaces > 2) {
+      k   = drep->bound[b].VSet[vs-1].quilt->points[j].findices.multi[0]-1;
     } else {
-      k   = drep->bound[bound-1].VSet[vs-1].quilt->points[i].findices.faces[0]-1;
+      k   = drep->bound[b].VSet[vs-1].quilt->points[j].findices.faces[0]-1;
     }
-    ibrep = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.BRep;
-    iface = drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].bface.index;
-    brep  = mdl->BReps[ibrep-1];
-    face  = (ego) brep->body->faces[iface-1].handle.ident.ptr;
-    stat  = EG_evaluate(face, drep->bound[bound-1].VSet[vs-1].quilt->faceUVs[k].uv,
+    m     = drep->bound[b].VSet[vs-1].quilt->faceUVs[k].owner-1;
+    bface = drep->bound[b].VSet[vs-1].quilt->bfaces[m];
+    brep  = mdl->BReps[bface.BRep-1];
+    face  = (ego) brep->body->faces[bface.index-1].handle.ident.ptr;
+    stat  = EG_evaluate(face, drep->bound[b].VSet[vs-1].quilt->faceUVs[k].uv,
                         results);
     if (stat != EGADS_SUCCESS) return stat;
     gem_kernelCurvCalc(results, face->mtype, &curv[8*j]);

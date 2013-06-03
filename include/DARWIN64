@@ -2,7 +2,7 @@
 #
 
 CCOMP  = gcc -m64 -g
-COPTS  = -O -fno-unit-at-a-time
+COPTS  = -O -fno-unit-at-a-time -Wuninitialized
 LOPTS  = rs
 RANLB  =
 XLIBS  = -L/usr/X11/lib -lX11 -framework CoreFoundation
