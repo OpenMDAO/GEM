@@ -3,7 +3,7 @@
  *
  *             Base-level Functions
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -18,7 +18,10 @@
 #include "kernel.h"
 
 
-  static int gem_nContext = 0;
+  static int  gem_nContext = 0;
+
+  extern void gem_drepManagerClose();
+  extern void gem_exactInit();
 
 
 int 
@@ -29,6 +32,7 @@ gem_initialize(gemCntxt **context)
 
   *context = NULL;
   if (gem_nContext == 0) {
+    gem_exactInit();
     stat = gem_kernelInit();
     if (stat != GEM_SUCCESS) return stat;
     gem_nContext++;
@@ -120,7 +124,10 @@ gem_terminate(gemCntxt *cntxt)
   gem_free(cntxt);
   gem_nContext--;
   
-  if (gem_nContext == 0) gem_kernelClose();
+  if (gem_nContext == 0) {
+    gem_kernelClose();
+    gem_drepManagerClose();
+  }
 
   return GEM_SUCCESS;
 }
@@ -439,6 +446,9 @@ gem_errorString(int code)
   if (code == GEM_ASSEMBLY)      return "GEM: Assembly Error";
   if (code == GEM_BADNAME)       return "GEM: Bad Name";
   if (code == GEM_UNSUPPORTED)   return "GEM: Unsupported";
+  if (code == GEM_BADMETHOD)     return "GEM: Bad Method";
+  if (code == GEM_MISMATCH)      return "GEM: Mismatch";
+  if (code == GEM_DEGENERATE)    return "GEM: Degenerate";
 
   return "Unknown Error!";
 }

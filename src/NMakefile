@@ -5,9 +5,13 @@ IDIR = $(SDIR)\..\include
 ODIR = $(GEM_BLOC)\obj
 
 OBJS = attribute.obj base.obj brep.obj drep.obj memory.obj model.obj \
-	fillArea.obj approx.obj prmCfit.obj prmGrid.obj prmUV.obj
+	fillArea.obj approx.obj prmCfit.obj prmGrid.obj prmUV.obj transfer.obj \
+	robustIn.obj conjGrad.obj
 
-default:	start ..\lib\triDiscrete.dll ..\lib\gem.lib end
+default:	start ..\lib\triLinearContinuous.dll \
+		..\lib\triLinearDiscontinuous.dll \
+		..\lib\triConstantDiscontinuous.dll \
+		..\lib\quadLinearContinuous.dll ..\lib\gem.lib end
 
 start:
 	cd $(ODIR)
@@ -15,14 +19,60 @@ start:
 	xcopy $(SDIR)\*.h   /Q /Y
 	xcopy $(SDIR)\*.def /Q /Y
 
-triDiscrete.obj: triDiscrete.c
-        cl /c $(COPTS) $(DEFINS) /I$(IDIR) triDiscrete.c
+triUtils.obj:	triUtils.c
+	cl /c $(COPTS) $(DEFINS) /I$(IDIR) triUtils.c
 
-..\lib\triDiscrete.dll:    triDiscrete.obj
-        -del ..\lib\triDiscrete.dll ..\lib\triDiscrete.lib ..\lib\triDiscrete.exp
-        link /out:..\lib\triDiscrete.dll /dll /def:method.def triDiscrete.obj 
-        $(MCOMP) /manifest ..\lib\triDiscrete.dll.manifest \
-                /outputresource:..\lib\triDiscrete.dll;2
+triConstantDiscontinuous.obj:	triConstantDiscontinuous.c
+	cl /c $(COPTS) $(DEFINS) /I$(IDIR) triConstantDiscontinuous.c
+
+..\lib\triConstantDiscontinuous.dll:	triConstantDiscontinuous.obj \
+					triUtils.obj ..\lib\gem.lib
+	-del ..\lib\triConstantDiscontinuous.dll \
+		..\lib\triConstantDiscontinuous.lib \
+		..\lib\triConstantDiscontinuous.exp
+	link /out:..\lib\triConstantDiscontinuous.dll /dll \
+		/def:method.def triConstantDiscontinuous.obj triUtils.obj \
+		..\lib\gem.lib
+	$(MCOMP) /manifest ..\lib\triConstantDiscontinuous.dll.manifest \
+		/outputresource:..\lib\triConstantDiscontinuous.dll;2
+
+triLinearContinuous.obj:	triLinearContinuous.c
+	cl /c $(COPTS) $(DEFINS) /I$(IDIR) triLinearContinuous.c
+
+..\lib\triLinearContinuous.dll:	triLinearContinuous.obj triUtils.obj \
+				..\lib\gem.lib
+	-del ..\lib\triLinearContinuous.dll ..\lib\triLinearContinuous.lib \
+		..\lib\triLinearContinuous.exp
+	link /out:..\lib\triLinearContinuous.dll /dll \
+		/def:method.def triLinearContinuous.obj triUtils.obj \
+		..\lib\gem.lib
+	$(MCOMP) /manifest ..\lib\triLinearContinuous.dll.manifest \
+		/outputresource:..\lib\triLinearContinuous.dll;2
+
+triLinearDiscontinuous.obj:	triLinearDiscontinuous.c
+	cl /c $(COPTS) $(DEFINS) /I$(IDIR) triLinearDiscontinuous.c
+
+..\lib\triLinearDiscontinuous.dll:	triLinearDiscontinuous.obj \
+					triUtils.obj ..\lib\gem.lib
+	-del ..\lib\triLinearDiscontinuous.dll \
+		..\lib\triLinearDiscontinuous.lib \
+		..\lib\triLinearDiscontinuous.exp
+	link /out:..\lib\triLinearDiscontinuous.dll /dll \
+		/def:method.def triLinearDiscontinuous.obj triUtils.obj \
+		..\lib\gem.lib
+	$(MCOMP) /manifest ..\lib\triDiscrete.dll.manifest \
+		/outputresource:..\lib\triLinearDiscontinuous.dll;2
+
+quadLinearContinuous.obj:	quadLinearContinuous.c
+	cl /c $(COPTS) $(DEFINS) /I$(IDIR) quadLinearContinuous.c
+
+..\lib\quadLinearContinuous.dll:	quadLinearContinuous.obj ..\lib\gem.lib
+	-del ..\lib\quadLinearContinuous.dll ..\lib\quadLinearContinuous.lib \
+		..\lib\quadLinearContinuous.exp
+	link /out:..\lib\quadLinearContinuous.dll /dll \
+		/def:method.def quadLinearContinuous.obj ..\lib\gem.lib
+	$(MCOMP) /manifest ..\lib\quadLinearContinuous.dll.manifest \
+		/outputresource:..\lib\quadLinearContinuous.dll;2
 
 ..\lib\gem.lib:	$(OBJS)
 	-del ..\lib\gem.lib
@@ -44,6 +94,15 @@ clean:
 
 cleanall:
 	cd $(ODIR)
-        -del ..\lib\triDiscrete.dll ..\lib\triDiscrete.lib ..\lib\triDiscrete.exp
-	-del ..\lib\gem.lib $(OBJS) triDiscrete.obj
+        -del ..\lib\triConstantDiscontinuous.dll \
+		..\lib\triConstantDiscontinuous.lib \
+		..\lib\triConstantDiscontinuous.exp
+        -del ..\lib\triLinearContinuous.dll ..\lib\triLinearContinuous.lib \
+		..\lib\triLinearContinuous.exp
+        -del ..\lib\triLinearDiscontinuous.dll \
+		..\lib\triLinearDiscontinuous.lib \
+		..\lib\triLinearDiscontinuous.exp
+        -del ..\lib\quadLinearContinuous.dll ..\lib\quadLinearContinuous.lib \
+		..\lib\quadLinearContinuous.exp
+	-del ..\lib\gem.lib $(OBJS) triUtils.obj
 	cd $(SDIR)

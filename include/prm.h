@@ -128,7 +128,7 @@ typedef struct {
 
 /*
  * create a parameterization from a set of Vertices
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  */
 extern int
 prm_CreateU(int      nvrt,              /* (in)   number of Vertices */
@@ -169,7 +169,7 @@ prm_CreateUV(int      UVtype,           /* (in)   type of transformation (see re
 
 /*
  * reparameterize based upon arc-lengths
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  *                PRM_NOTCONVERGED
  */
 extern int
@@ -182,7 +182,7 @@ prm_SmoothU(int      periodic,          /* (in)   = 0  no periodicity */
 
 /*
  * reparameterize based upon arc-lengths and angles
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  *                PRM_NOTCONVERGED
  *                PRM_NEGATIVEAREAS
  */
@@ -203,7 +203,7 @@ prm_SmoothUV(int      type,             /* (in)   smoothing type =1 for boundary
 
 /*
  * normalize a parameterization
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  */
 extern int
 prm_NormalizeU(double  halo,            /* (in)   halo size */
@@ -214,7 +214,7 @@ prm_NormalizeU(double  halo,            /* (in)   halo size */
 
 /*
  * normalize a parameterization
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  */
 extern int
 prm_NormalizeUV(double  halo,           /* (in)   halo size */
@@ -226,14 +226,14 @@ prm_NormalizeUV(double  halo,           /* (in)   halo size */
 
 /*
  * set a global Grid size limit
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  */
 extern int
 prm_LimitGridSize(int      limit);      /* (in)   global size limit */
 
 /*
  * set up a fixed Cfit for a set of Vertices
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  *                PRM_NOTCONVERGED
  *                PRM_BADPARAM
  */
@@ -255,7 +255,7 @@ prm_FixedCfit(int      nvrt,            /* (in)   number of Vertices */
 
 /*
  * set up a fixed Grid for a set of Vertices
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  *                PRM_NOTCONVERGED
  *                PRM_BADPARAM
  */
@@ -279,7 +279,7 @@ prm_FixedGrid(int      nvrt,            /* (in)   number of Vertices */
 
 /*
  * set up the best (ie, coarsest) Cfit for a set of Vertices
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  *                PRM_TOLERANCEUNMET
  *                PRM_NOTCONVERGED
  *                PRM_BADPARAM
@@ -305,7 +305,7 @@ prm_BestCfit(int      nvrt,             /* (in)   number of Vertices */
 
 /*
  * set up the best (ie, coarsest) Grid for a set of Vertices
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  *                PRM_TOLERANCEUNMET
  *                PRM_NOTCONVERGED
  *                PRM_BADPARAM
@@ -334,7 +334,7 @@ prm_BestGrid(int      nvrt,             /* (in)   number of Vertices */
 
 /*
  * evaluate the Cfit at the given uu
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  */
 extern int
 prm_EvalCfit(cfitTree tree,             /* (in)   Cfit Tree */
@@ -345,7 +345,7 @@ prm_EvalCfit(cfitTree tree,             /* (in)   Cfit Tree */
 
 /*
  * evaluate the Grid at the given uv
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  */
 extern int
 prm_EvalGrid(gridTree tree,             /* (in)   Grid Tree */
@@ -359,14 +359,14 @@ prm_EvalGrid(gridTree tree,             /* (in)   Grid Tree */
 
 /*
  * free Cells and Knots associated with Cfit Tree
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  */
 extern int
 prm_FreeCfit(cfitTree *tree);           /* (in)   pointer to Cfit Tree */
 
 /*
  * free Cells and Knots associated with Grid Tree
- *      returns:  VTE_SUCCESS
+ *      returns:  GEM_SUCCESS
  */
 extern int
 prm_FreeGrid(gridTree *tree);           /* (in)   pointer to Grid Tree */

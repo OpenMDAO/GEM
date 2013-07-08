@@ -1266,19 +1266,19 @@ floaterParameterization(int        ntri,     /* (in)   number of Triangles */
         iv1 = tri[itri].indices[1] - 1;
         iv2 = tri[itri].indices[2] - 1;
 
-        if (tri[itri].neigh[0] < 0) {
+        if (tri[itri].neigh[0] <= 0) {
             nn++;
             if (vrts[iv1].next == -1) {
                 vrts[iv1].next = iv2;
             }
         }
-        if (tri[itri].neigh[1] < 0) {
+        if (tri[itri].neigh[1] <= 0) {
             nn++;
             if (vrts[iv2].next == -1) {
                 vrts[iv2].next = iv0;
             }
         }
-        if (tri[itri].neigh[2] < 0) {
+        if (tri[itri].neigh[2] <= 0) {
             nn++;
             if (vrts[iv0].next == -1) {
                 vrts[iv0].next = iv1;
@@ -1508,7 +1508,7 @@ floaterParameterization(int        ntri,     /* (in)   number of Triangles */
 
         /*
          * set up the Triangle neighbor information for the new Triangles
-         *    (note the backwards loop since it is most likely that the neighnor
+         *    (note the backwards loop since it is most likely that the neighbor
          *    will be near the end of the list)
          */
         for (i = oldNtri; i < ntri; i++) {
@@ -2803,19 +2803,19 @@ fillHoles(int      ntri,                     /* (in)   number of Triangles */
         iv1 = tri[itri].indices[1] - 1;
         iv2 = tri[itri].indices[2] - 1;
 
-        if (tri[itri].neigh[0] < 0) {
+        if (tri[itri].neigh[0] <= 0) {
             nn++;
             if (prev[iv2] == -1) {
                 prev[iv2] = iv1;
             }
         }
-        if (tri[itri].neigh[1] < 0) {
+        if (tri[itri].neigh[1] <= 0) {
             nn++;
             if (prev[iv0] == -1) {
                 prev[iv0] = iv2;
             }
         }
-        if (tri[itri].neigh[2] < 0) {
+        if (tri[itri].neigh[2] <= 0) {
             nn++;
             if (prev[iv1] == -1) {
                 prev[iv1] = iv0;
@@ -4440,19 +4440,19 @@ prm_SmoothUV(int      type,                  /* (in)   smoothing type =1 for bou
         iv1 = newTri[itri].indices[1] - 1;
         iv2 = newTri[itri].indices[2] - 1;
 
-        if (newTri[itri].neigh[0] < 0) {
+        if (newTri[itri].neigh[0] <= 0) {
             prev[ iv2] = iv1;
             next[ iv1] = iv2;
             corn[ iv2] = 0;
             corn[ iv1] = 0;
         }
-        if (newTri[itri].neigh[1] < 0) {
+        if (newTri[itri].neigh[1] <= 0) {
             prev[ iv0] = iv2;
             next[ iv2] = iv0;
             corn[ iv0] = 0;
             corn[ iv2] = 0;
         }
-        if (newTri[itri].neigh[2] < 0) {
+        if (newTri[itri].neigh[2] <= 0) {
             prev[ iv1] = iv0;
             next[ iv0] = iv1;
             corn[ iv1] = 0;

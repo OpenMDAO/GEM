@@ -3,7 +3,7 @@
  *
  *             Geometry Kernel Functions Include
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -77,10 +77,15 @@ extern int
 gem_kernelTessel(gemBody *body, double angle, double mxside, double sag,
                  gemDRep *drep, int brep);
 
-/* evaluation */
+/* get evaluation from a single face */
 extern int
-gem_kernelEval(gemDRep *drep, int bound, int vs, int gflg, int inv,
-               double **eval);
+gem_kernelEval(gemDRep *drep, gemPair pair, int npts, double *uvs,
+               double *xyzs);
+
+/* get inv evaluation from a single face */
+extern int
+gem_kernelInvEval(gemDRep *drep, gemPair pair, int npts, double *xyzs,
+                  double *uvs);
 
 /* get derivatives */
 extern int
@@ -90,9 +95,9 @@ gem_kernelEvalDs(gemDRep *drep, int bound, int vs, double *d1, double *d2);
 extern int
 gem_kernelCurvature(gemDRep *drep, int bound, int vs, double *data);
 
-/* get In/Out */
+/* are all the Faces looking at the same surface? */
 extern int
-gem_kernelInside(gemDRep *drep, int bound, int vs, double *data);
+gem_kernelSameSurfs(gemModel *model, int nFace, gemPair *bfaces);
 
 /* get error string */
 extern /*@null@*/ /*@observer@*/ const char *

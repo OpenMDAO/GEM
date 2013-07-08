@@ -3,7 +3,7 @@
  *
  *             Kernel Tessellation Function -- EGADS
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -27,15 +27,13 @@ gem_destroyTRep(gemTRep *trep)
     for (i = 0; i < trep->nFaces; i++) {
       gem_free(trep->Faces[i].xyzs);
       gem_free(trep->Faces[i].tris);
-      gem_free(trep->conns[i].tric);
-      gem_free(trep->conns[i].uvs);
-      gem_free(trep->conns[i].vid);
+      gem_free(trep->Faces[i].tric);
+      gem_free(trep->Faces[i].uvs);
+      gem_free(trep->Faces[i].vid);
     }
     gem_free(trep->Faces);
-    gem_free(trep->conns);
     trep->nFaces = 0;
     trep->Faces  = NULL;
-    trep->conns  = NULL;
   }
 
   if (trep->Edges != NULL) {
@@ -83,29 +81,19 @@ gem_kernelTessel(gemBody *body, double angle, double mxside, double sag,
     EG_deleteObject(tess);
     return GEM_ALLOC;
   }
-  trep->conns = (gemTConn *) gem_allocate(nfaces*sizeof(gemTConn));
-  if (trep->conns == NULL) {
-    gem_free(trep->Faces);
-    trep->Faces = NULL;
-    EG_deleteObject(tess);
-    return GEM_ALLOC;
-  }
   for (i = 0; i < nfaces; i++) {
     trep->Faces[i].ntris = 0;
     trep->Faces[i].npts  = 0;
     trep->Faces[i].tris  = NULL;
+    trep->Faces[i].tric  = NULL;
     trep->Faces[i].xyzs  = NULL;
-    trep->Faces[i].ptrm  = NULL;
-    trep->conns[i].tric  = NULL;
-    trep->conns[i].uvs   = NULL;
-    trep->conns[i].vid   = NULL;
+    trep->Faces[i].uvs   = NULL;
+    trep->Faces[i].vid   = NULL;
   }
 
   trep->Edges  = (gemDEdge *) gem_allocate(nedges*sizeof(gemDEdge));
   if (trep->Edges == NULL) {
-    gem_free(trep->conns);
     gem_free(trep->Faces);
-    trep->conns = NULL;
     trep->Faces = NULL;
     EG_deleteObject(tess);
     return GEM_ALLOC;
@@ -146,29 +134,29 @@ gem_kernelTessel(gemBody *body, double angle, double mxside, double sag,
     }
     for (j = 0; j < 3*ntri; j++) trep->Faces[i].tris[j] = tris[j];
 
-    trep->conns[i].uvs = (double *) gem_allocate(2*npts*sizeof(double));
-    if (trep->conns[i].uvs == NULL) {
+    trep->Faces[i].uvs = (double *) gem_allocate(2*npts*sizeof(double));
+    if (trep->Faces[i].uvs == NULL) {
       gem_destroyTRep(trep);
       EG_deleteObject(tess);
       return GEM_ALLOC;
     }
-    for (j = 0; j < 2*npts; j++) trep->conns[i].uvs[j] = uvs[j];
-    trep->conns[i].tric = (int *) gem_allocate(3*ntri*sizeof(int));
-    if (trep->conns[i].tric == NULL) {
+    for (j = 0; j < 2*npts; j++) trep->Faces[i].uvs[j] = uvs[j];
+    trep->Faces[i].tric = (int *) gem_allocate(3*ntri*sizeof(int));
+    if (trep->Faces[i].tric == NULL) {
       gem_destroyTRep(trep);
       EG_deleteObject(tess);
       return GEM_ALLOC;
     }
-    for (j = 0; j < 3*ntri; j++) trep->conns[i].tric[j] = tric[j];
-    trep->conns[i].vid = (int *) gem_allocate(2*npts*sizeof(int));
-    if (trep->conns[i].vid == NULL) {
+    for (j = 0; j < 3*ntri; j++) trep->Faces[i].tric[j] = tric[j];
+    trep->Faces[i].vid = (int *) gem_allocate(2*npts*sizeof(int));
+    if (trep->Faces[i].vid == NULL) {
       gem_destroyTRep(trep);
       EG_deleteObject(tess);
       return GEM_ALLOC;
     }
     for (j = 0; j < npts; j++) {
-      trep->conns[i].vid[2*j  ] = ptype[j];
-      trep->conns[i].vid[2*j+1] = pindex[j];
+      trep->Faces[i].vid[2*j  ] = ptype[j];
+      trep->Faces[i].vid[2*j+1] = pindex[j];
     }
   }  
 

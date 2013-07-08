@@ -3,7 +3,7 @@
  *
  *             DRep Spline Approximate functions
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -17,85 +17,12 @@
 
 #include "gem.h"
 #include "memory.h"
-#include "prm.h"
+#include "connect.h"
 
-#define NOTFILLED	-1
+
 #define TOLCOPO         1.e-8   /* Tolerance for coincident points in
                                    normalized coordinates */
 
-
-  typedef struct {
-    int node1;                  /* 1nd node number for edge */
-    int node2;                  /* 2nd node number for edge */
-    int *tri;                   /* 1st triangle storage or NULL for match */
-    int thread;                 /* thread to next face with 1st node number */
-  } connect;
-
-
-
-static void gem_makeConnect(int k1, int k2, int *tri, int *kedge, 
-                            int *ntable, connect *etable)
-{
-  int kn1, kn2, iface, oface, look;
-
-  if (k1 > k2) {
-    kn1 = k2-1;
-    kn2 = k1-1;
-  } else {
-    kn1 = k1-1;
-    kn2 = k2-1;
-  }
-
-  /* add to edge table */
-
-  if (ntable[kn1] == NOTFILLED) {
-
-    /* virgin node */
-
-    *kedge               += 1;
-    ntable[kn1]           = *kedge;
-    etable[*kedge].node1  = kn1;
-    etable[*kedge].node2  = kn2;
-    etable[*kedge].tri    = tri;
-    etable[*kedge].thread = NOTFILLED;
-    return;
-
-  } else {
-
-    /* old node */
-    iface = ntable[kn1];
-
-again:
-    if (etable[iface].node2 == kn2) {
-      if (etable[iface].tri != NULL) {
-        look = *etable[iface].tri;
-        *etable[iface].tri = *tri;
-        *tri = look;
-        etable[iface].tri = NULL;
-      } else {
-        printf(" GEM Internal: Side %d %d done [but %d] (gem_makeConnect)!\n",
-               k1+1, k2+1, *tri);
-      }
-      return;
-    } else {
-      oface = iface;
-      iface = etable[oface].thread;
-    }
-
-    /* try next position in thread */
-    if (iface == NOTFILLED) {
-      *kedge               += 1;
-      etable[oface].thread  = *kedge;
-      etable[*kedge].node1  = kn1;
-      etable[*kedge].node2  = kn2;
-      etable[*kedge].tri    = tri;
-      etable[*kedge].thread = NOTFILLED;
-      return;
-    }
-
-    goto again;
-  }
-}
 
 
 static int gem_spline(int natural, int nu, double *r, double *aux, double *t)
@@ -401,8 +328,8 @@ static void gem_invEval1D(int nrank, int ntx, double *coeff, double *sv,
 }
 
 
-static int gem_fillCoeff2D(int nrank, int nux, int nvx, double *fit, 
-                           double *coeff, double *r)
+int gem_fillCoeff2D(int nrank, int nux, int nvx, double *fit, double *coeff,
+                    double *r)
 {
   /* NOTE: r must be at least 3*max(nux,nvx) in length -- 6 if any periodics */
   int    i, j, k, nu, nv, maxsize, peru = 1, perv = 1;
@@ -418,7 +345,6 @@ static int gem_fillCoeff2D(int nrank, int nux, int nvx, double *fit,
     nv   = -nv;
     perv = 2;
   }
-  if (nu < 0)
   if (nv > nu) {
     maxsize = nv;
   } else {
@@ -888,18 +814,18 @@ int gem_Interp1DFit(int nrank, int npts, /*@null@*/ double *tx, double *values,
 static int
 gem_triFill(int npts, int ntris, int *tris, prmTri *vtris)
 {
-  int     i, j, *ntab, nside;
-  connect *etab;
+  int      i, j, *vtab, nside;
+  gemNeigh *etab;
   
-  ntab = (int *) gem_allocate(npts*sizeof(int));
-  if (ntab == NULL) {
+  vtab = (int *) gem_allocate(npts*sizeof(int));
+  if (vtab == NULL) {
     printf(" GEM Error: Vert Table Malloc (gem_triFill)!\n");
     return GEM_ALLOC;    
   }
-  etab = (connect *) gem_allocate(ntris*3*sizeof(connect));
+  etab = (gemNeigh *) gem_allocate(ntris*3*sizeof(gemNeigh));
   if (etab == NULL) {
-    printf(" GEM Error: Edge Table Malloc (gem_triFill)!\n");
-    gem_free(ntab);
+    printf(" GEM Error: Side Table Malloc (gem_triFill)!\n");
+    gem_free(vtab);
     return GEM_ALLOC;    
   }
 
@@ -912,15 +838,15 @@ gem_triFill(int npts, int ntris, int *tris, prmTri *vtris)
     vtris[i].neigh[2]   = i+1;
     vtris[i].own        = 1;
   }
-  nside = -1;
-  for (j = 0; j < npts; j++) ntab[j] = NOTFILLED;
+  nside = NOTFILLED;
+  for (j = 0; j < npts; j++) vtab[j] = NOTFILLED;
   for (i = 0; i < ntris;  i++) {
-    gem_makeConnect( vtris[i].indices[1], vtris[i].indices[2],
-                    &vtris[i].neigh[0], &nside, ntab, etab);
-    gem_makeConnect( vtris[i].indices[0], vtris[i].indices[2], 
-                    &vtris[i].neigh[1], &nside, ntab, etab);
-    gem_makeConnect( vtris[i].indices[0], vtris[i].indices[1],
-                    &vtris[i].neigh[2], &nside, ntab, etab);
+    gem_fillNeighbor( vtris[i].indices[1], vtris[i].indices[2],
+                     &vtris[i].neigh[0], &nside, vtab, etab);
+    gem_fillNeighbor( vtris[i].indices[0], vtris[i].indices[2], 
+                     &vtris[i].neigh[1], &nside, vtab, etab);
+    gem_fillNeighbor( vtris[i].indices[0], vtris[i].indices[1],
+                     &vtris[i].neigh[2], &nside, vtab, etab);
   }
                    
   /* find any unconnected triangle sides */
@@ -932,7 +858,7 @@ gem_triFill(int npts, int ntris, int *tris, prmTri *vtris)
   }
 
   gem_free(etab);
-  gem_free(ntab);
+  gem_free(vtab);
   return GEM_SUCCESS;
 }
 
@@ -1136,27 +1062,27 @@ int gem_Interp2DFit(int nrank, int npts, double *uvx, double *values,
 }
 
 
-int gem_Interpolate1D(gemAprx1D interp, double tx, double *sv,
+int gem_Interpolate1D(gemAprx1D *interp, double tx, double *sv,
                       /*@null@*/ double *dt1, /*@null@*/ double *dt2)
 {
   int    i, nrank;
   double t, mt0, mt1, r = 1.0;
 
-  nrank = interp.nrank;
+  nrank = interp->nrank;
   t     = tx;
-  if (interp.tmap != NULL) {
-    gem_invEval1D(1, interp.ntm, interp.tmap, &tx, &t);
+  if (interp->tmap != NULL) {
+    gem_invEval1D(1, interp->ntm, interp->tmap, &tx, &t);
     if ((dt1 != NULL) || (dt2 != NULL)) {
-      gem_eval1D(1, interp.ntm, interp.tmap, t, &mt0, &mt1, NULL);
+      gem_eval1D(1, interp->ntm, interp->tmap, t, &mt0, &mt1, NULL);
       if (mt1 == 0.0) mt1 = 1.0;
-      r  = (interp.nts-1)/mt1;
-      r /=  interp.ntm-1;
+      r  = (interp->nts-1)/mt1;
+      r /=  interp->ntm-1;
     }
-    t *= interp.nts-1;
-    t /= interp.ntm-1;
+    t *= interp->nts-1;
+    t /= interp->ntm-1;
   }
 
-  gem_eval1D(nrank, interp.nts, interp.interp, t, sv, dt1, dt2);
+  gem_eval1D(nrank, interp->nts, interp->interp, t, sv, dt1, dt2);
   if (dt1 != NULL) for (i = 0; i < nrank; i++) dt1[i] *= r;
   if (dt2 != NULL) for (i = 0; i < nrank; i++) dt2[i] *= r*r;
 
@@ -1164,7 +1090,7 @@ int gem_Interpolate1D(gemAprx1D interp, double tx, double *sv,
 }
 
 
-int gem_Interpolate2D(gemAprx2D interp, double *uvx, double *sv,
+int gem_Interpolate2D(gemAprx2D *interp, double *uvx, double *sv,
                       /*@null@*/ double *du,  /*@null@*/ double *dv,
                       /*@null@*/ double *duu, /*@null@*/ double *duv,
                       /*@null@*/ double *dvv)
@@ -1177,19 +1103,19 @@ int gem_Interpolate2D(gemAprx2D interp, double *uvx, double *sv,
   double mp[2], mu[2], mv[2], sav, det;
 #endif
 
-  nrank = interp.nrank;
-  if (interp.uvmap == NULL) {
-    gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uvx, sv, 
+  nrank = interp->nrank;
+  if (interp->uvmap == NULL) {
+    gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uvx, sv,
                du, dv, duu, duv, dvv);
     return GEM_SUCCESS;
   }
 
-  gem_invEval2D(2, interp.num, interp.nvm, interp.uvmap, uvx, uvn, tmp);
-  uv[0] = (interp.nus-1)*uvn[0]/(interp.num-1);
-  uv[1] = (interp.nvs-1)*uvn[1]/(interp.nvm-1);
+  gem_invEval2D(2, interp->num, interp->nvm, interp->uvmap, uvx, uvn, tmp);
+  uv[0] = (interp->nus-1)*uvn[0]/(interp->num-1);
+  uv[1] = (interp->nvs-1)*uvn[1]/(interp->nvm-1);
   if ((du == NULL) && (dv == NULL) && (duu == NULL) && 
                                       (duv == NULL) && (dvv == NULL)) {
-    gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uv, sv, 
+    gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uv, sv,
                NULL, NULL, NULL, NULL, NULL);
     return GEM_SUCCESS;
   }
@@ -1199,23 +1125,23 @@ int gem_Interpolate2D(gemAprx2D interp, double *uvx, double *sv,
 
 #ifndef DIFFERENCE
 
-  gem_eval2D(2, interp.num, interp.nvm, interp.uvmap, uvn, mp, mu, mv,
+  gem_eval2D(2, interp->num, interp->nvm, interp->uvmap, uvn, mp, mu, mv,
             NULL, NULL, NULL);
 
   /* invert the mapping matrix */
-  mu[0] *= (interp.num-1);
-  mu[1] *= (interp.num-1);
-  mv[0] *= (interp.nvm-1);
-  mv[1] *= (interp.nvm-1);
+  mu[0] *= (interp->num-1);
+  mu[1] *= (interp->num-1);
+  mv[0] *= (interp->nvm-1);
+  mv[1] *= (interp->nvm-1);
   det = mu[0]*mv[1] - mu[1]*mv[0];
   if (det != 0.0) det = 1.0/det;
   sav    =  mu[0];
-  mu[0]  =  det*mv[1]*(interp.nus-1);
-  mu[1] *= -det      *(interp.nus-1)/(interp.nvs-1);
-  mv[0] *= -det      *(interp.nvs-1)/(interp.nus-1);
-  mv[1]  =  det*sav  *(interp.nvs-1);
+  mu[0]  =  det*mv[1]*(interp->nus-1);
+  mu[1] *= -det      *(interp->nus-1)/(interp->nvs-1);
+  mv[0] *= -det      *(interp->nvs-1)/(interp->nus-1);
+  mv[1]  =  det*sav  *(interp->nvs-1);
 
-  gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uv, sv, &store[0], 
+  gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uv, sv, &store[0],
              &store[nrank], &store[2*nrank], &store[3*nrank], &store[4*nrank]);
 
   if (du != NULL)
@@ -1243,24 +1169,24 @@ int gem_Interpolate2D(gemAprx2D interp, double *uvx, double *sv,
 
 #else
 
-  gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uv, sv, 
+  gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uv, sv,
              NULL, NULL, NULL, NULL, NULL);
 
   if ((du != NULL) || (duu != NULL) || (duv != NULL)) {
     uv[0] = uvx[0] - step;
     uv[1] = uvx[1];
-    gem_invEval2D(2, interp.num, interp.nvm, interp.uvmap, uv, uvn, tmp);
-    uv[0] = (interp.nus-1)*uvn[0]/(interp.num-1);
-    uv[1] = (interp.nvs-1)*uvn[1]/(interp.nvm-1);
-    gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uv, &store[0], 
+    gem_invEval2D(2, interp->num, interp->nvm, interp->uvmap, uv, uvn, tmp);
+    uv[0] = (interp->nus-1)*uvn[0]/(interp->num-1);
+    uv[1] = (interp->nvs-1)*uvn[1]/(interp->nvm-1);
+    gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uv, &store[0],
                NULL, NULL, NULL, NULL, NULL);
     uv[0] = uvx[0] + step;
     uv[1] = uvx[1];
-    gem_invEval2D(2, interp.num, interp.nvm, interp.uvmap, uv, uvn, tmp);
-    uv[0] = (interp.nus-1)*uvn[0]/(interp.num-1);
-    uv[1] = (interp.nvs-1)*uvn[1]/(interp.nvm-1);
-    gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uv, &store[nrank], 
-               NULL, NULL, NULL, NULL, NULL);
+    gem_invEval2D(2, interp->num, interp->nvm, interp->uvmap, uv, uvn, tmp);
+    uv[0] = (interp->nus-1)*uvn[0]/(interp->num-1);
+    uv[1] = (interp->nvs-1)*uvn[1]/(interp->nvm-1);
+    gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uv,
+               &store[nrank], NULL, NULL, NULL, NULL, NULL);
     if (du != NULL)
       for (i = 0; i < nrank; i++) 
         du[i] = (store[nrank+i]-store[i]) / (2.0*step);
@@ -1275,17 +1201,17 @@ int gem_Interpolate2D(gemAprx2D interp, double *uvx, double *sv,
   if ((dv != NULL) || (duv != NULL) || (dvv != NULL)) {
     uv[0] = uvx[0];
     uv[1] = uvx[1] - step;
-    gem_invEval2D(2, interp.num, interp.nvm, interp.uvmap, uv, uvn, tmp);
-    uv[0] = (interp.nus-1)*uvn[0]/(interp.num-1);
-    uv[1] = (interp.nvs-1)*uvn[1]/(interp.nvm-1);
-    gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uv, 
+    gem_invEval2D(2, interp->num, interp->nvm, interp->uvmap, uv, uvn, tmp);
+    uv[0] = (interp->nus-1)*uvn[0]/(interp->num-1);
+    uv[1] = (interp->nvs-1)*uvn[1]/(interp->nvm-1);
+    gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uv,
                &store[2*nrank], NULL, NULL, NULL, NULL, NULL);
     uv[0] = uvx[0];
     uv[1] = uvx[1] + step;
-    gem_invEval2D(2, interp.num, interp.nvm, interp.uvmap, uv, uvn, tmp);
-    uv[0] = (interp.nus-1)*uvn[0]/(interp.num-1);
-    uv[1] = (interp.nvs-1)*uvn[1]/(interp.nvm-1);
-    gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uv, 
+    gem_invEval2D(2, interp->num, interp->nvm, interp->uvmap, uv, uvn, tmp);
+    uv[0] = (interp->nus-1)*uvn[0]/(interp->num-1);
+    uv[1] = (interp->nvs-1)*uvn[1]/(interp->nvm-1);
+    gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uv,
                &store[3*nrank], NULL, NULL, NULL, NULL, NULL);
     if (dv != NULL)
       for (i = 0; i < nrank; i++) 
@@ -1301,10 +1227,10 @@ int gem_Interpolate2D(gemAprx2D interp, double *uvx, double *sv,
   if (duv != NULL) {
     uv[0] = uvx[0] + step;
     uv[1] = uvx[1] + step;
-    gem_invEval2D(2, interp.num, interp.nvm, interp.uvmap, uv, uvn, tmp);
-    uv[0] = (interp.nus-1)*uvn[0]/(interp.num-1);
-    uv[1] = (interp.nvs-1)*uvn[1]/(interp.nvm-1);
-    gem_eval2D(nrank, interp.nus, interp.nvs, interp.interp, uv, 
+    gem_invEval2D(2, interp->num, interp->nvm, interp->uvmap, uv, uvn, tmp);
+    uv[0] = (interp->nus-1)*uvn[0]/(interp->num-1);
+    uv[1] = (interp->nvs-1)*uvn[1]/(interp->nvm-1);
+    gem_eval2D(nrank, interp->nus, interp->nvs, interp->interp, uv,
                &store[4*nrank], NULL, NULL, NULL, NULL, NULL);
     for (i = 0; i < nrank; i++)
       duv[i] = ((store[4*nrank+i]-sv[i])/step - store[  nrank+i] -
@@ -1339,42 +1265,42 @@ int gem_Aprx2DFree(gemAprx2D *approx)
 }
 
 
-int gem_InvInterpolate1D(gemAprx1D interp, double *sv, double *t)
+int gem_invInterpolate1D(gemAprx1D *interp, double *sv, double *t)
 {
   double mt, ntx;
 
-  ntx = interp.nts;
-  if (interp.periodic != 0) ntx = -ntx;
-  gem_invEval1D(interp.nrank, ntx, interp.interp, sv, t);
-  if (interp.tmap != NULL) {
-    mt  = *t*(interp.ntm-1);
-    mt /=     interp.nts-1;
-    gem_eval1D(1, interp.ntm, interp.tmap, mt, t, NULL, NULL);
+  ntx = interp->nts;
+  if (interp->periodic != 0) ntx = -ntx;
+  gem_invEval1D(interp->nrank, ntx, interp->interp, sv, t);
+  if (interp->tmap != NULL) {
+    mt  = *t*(interp->ntm-1);
+    mt /=     interp->nts-1;
+    gem_eval1D(1, interp->ntm, interp->tmap, mt, t, NULL, NULL);
   }
   return gem_Interpolate1D(interp, *t, sv, NULL, NULL);
 }
 
 
-int gem_InvInterpolate2D(gemAprx2D interp, double *sv, double *uv)
+int gem_invInterpolate2D(gemAprx2D *interp, double *sv, double *uv)
 {
   int    nrank, nux, nvx;
   double uvx[2], *tmp;
 
-  nrank = interp.nrank;
+  nrank = interp->nrank;
   tmp   = gem_allocate(6*nrank*sizeof(double));
   if (tmp == NULL) return GEM_ALLOC;
-  nux   = interp.nus;
-  nvx   = interp.nvs;
-  if ((interp.periodic & 1) != 0) nux = -nux;
-  if ((interp.periodic & 2) != 0) nvx = -nvx;
-  gem_invEval2D(nrank, nux, nvx, interp.interp, sv, uv, tmp);
+  nux   = interp->nus;
+  nvx   = interp->nvs;
+  if ((interp->periodic & 1) != 0) nux = -nux;
+  if ((interp->periodic & 2) != 0) nvx = -nvx;
+  gem_invEval2D(nrank, nux, nvx, interp->interp, sv, uv, tmp);
   gem_free(tmp);
-  if (interp.uvmap != NULL) {
-    uvx[0]  = uv[0]*(interp.num-1);
-    uvx[0] /=        interp.nus-1;
-    uvx[1]  = uv[1]*(interp.nvm-1);
-    uvx[1] /=        interp.nvs-1;
-    gem_eval2D(2, interp.num, interp.nvm, interp.uvmap, uvx, uv, NULL, NULL,
+  if (interp->uvmap != NULL) {
+    uvx[0]  = uv[0]*(interp->num-1);
+    uvx[0] /=        interp->nus-1;
+    uvx[1]  = uv[1]*(interp->nvm-1);
+    uvx[1] /=        interp->nvs-1;
+    gem_eval2D(2, interp->num, interp->nvm, interp->uvmap, uvx, uv, NULL, NULL,
                NULL, NULL, NULL);
   }
   return gem_Interpolate2D(interp, uv, sv, NULL, NULL, NULL, NULL, NULL);

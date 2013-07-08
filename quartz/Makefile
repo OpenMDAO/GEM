@@ -7,8 +7,8 @@ TDIR  = $(GEM_BLOC)/test
 VPATH = $(ODIR)
 
 OBJS = qbraattr.o qboolean.o qclose.o qequiv.o qinit.o qload.o qmprops.o \
-	qrelease.o qtessel.o qtopattr.o qeval.o qevald.o qcurva.o qinside.o \
-	qregen.o qcopy.o qsave.o
+	qrelease.o qtessel.o qtopattr.o qevald.o qcurva.o qregen.o qcopy.o \
+	qsave.o qsamesrf.o qeval.o qieval.o
 
 $(TDIR)/qtest:	$(ODIR)/qtest.o $(LDIR)/libquartz.a $(LDIR)/libgem.a
 	$(CCOMP) -o $(TDIR)/qtest $(DLINK) $(ODIR)/qtest.o \

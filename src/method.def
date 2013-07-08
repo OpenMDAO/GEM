@@ -2,7 +2,8 @@ LIBRARY disMethod
 EXPORTS
 gemFreeQuilt
 gemDefineQuilt
-gemFreeTriangles
-gemTriangulate
+gemInvEvaluation
 gemInterpolation
+gemInterpolate_bar
 gemIntegration
+gemIntegrate_bar
