@@ -1,0 +1,2 @@
+#
+lint -I../include *.c -exportlocal -nestcomment -uniondef -boolops -immediatetrans

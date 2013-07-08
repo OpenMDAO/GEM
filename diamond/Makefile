@@ -7,8 +7,8 @@ TDIR  = $(GEM_BLOC)/test
 VPATH = $(ODIR)
 
 OBJS =	dbraattr.o dboolean.o dclose.o dequiv.o dinit.o dload.o dmprops.o \
-	drelease.o dtessel.o dtopattr.o deval.o devald.o dcurva.o dinside.o \
-	dregen.o dcopy.o dsave.o
+	drelease.o dtessel.o dtopattr.o devald.o dcurva.o dregen.o dcopy.o \
+	dsave.o dsamesrf.o deval.o dieval.o
 
 
 $(TDIR)/dtest:	$(ODIR)/dtest.o $(LDIR)/libdiamond.a $(LDIR)/libgem.a

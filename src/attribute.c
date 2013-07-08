@@ -3,7 +3,7 @@
  *
  *             Internal Attribute Functions
  *
- *      Copyright 2011-2012, Massachusetts Institute of Technology
+ *      Copyright 2011-2013, Massachusetts Institute of Technology
  *      Licensed under The GNU Lesser General Public License, version 2.1
  *      See http://www.opensource.org/licenses/lgpl-2.1.php
  *
@@ -81,10 +81,10 @@ gem_setAttrib(gemAttrs **attrx, /*@null@*/ char *name, int atype, int alen,
   gemAttrs *attr;
 
   if (name == NULL) return GEM_NULLNAME;
-  if ((atype != GEM_BOOL) && (atype != GEM_INTEGER) && (atype != GEM_REAL) &&
-      (atype != GEM_STRING)) return GEM_BADTYPE;
+  if ((atype != GEM_BOOL)   && (atype != GEM_INTEGER) && (atype != GEM_REAL) &&
+      (atype != GEM_STRING) && (atype != GEM_POINTER)) return GEM_BADTYPE;
   if (alen > 0)
-    if (atype == GEM_STRING) {
+    if ((atype == GEM_STRING) || (atype == GEM_POINTER)) {
       if (string   == NULL) return GEM_NULLVALUE;
     } else if (atype == GEM_REAL) {
       if (reals    == NULL) return GEM_NULLVALUE;
@@ -113,7 +113,7 @@ gem_setAttrib(gemAttrs **attrx, /*@null@*/ char *name, int atype, int alen,
     } else {
       gem_free(attr->attrs[i].integers);
       gem_free(attr->attrs[i].reals);
-      gem_free(attr->attrs[i].string);
+      if (attr->attrs[i].type != GEM_POINTER) gem_free(attr->attrs[i].string);
       attr->attrs[i].integers = NULL;
       attr->attrs[i].reals    = NULL;
       attr->attrs[i].string   = NULL;
@@ -123,6 +123,10 @@ gem_setAttrib(gemAttrs **attrx, /*@null@*/ char *name, int atype, int alen,
         attr->attrs[i].length = strlen(string);
         attr->attrs[i].string = gem_strdup(string);
         if (attr->attrs[i].string == NULL) attr->attrs[i].length = 0;
+      } else if (atype == GEM_POINTER) {
+        if (string == NULL) return GEM_NULLVALUE;
+        attr->attrs[i].string = string;
+        attr->attrs[i].length = alen;
       } else if (atype == GEM_REAL) {
         if (reals == NULL) return GEM_NULLVALUE;
         attr->attrs[i].length = 0;
@@ -173,6 +177,10 @@ gem_setAttrib(gemAttrs **attrx, /*@null@*/ char *name, int atype, int alen,
     attr->attrs[i].length = strlen(string);
     attr->attrs[i].string = gem_strdup(string);
     if (attr->attrs[i].string == NULL) attr->attrs[i].length = 0;
+  } else if (atype == GEM_POINTER) {
+    if (string == NULL) return GEM_NULLVALUE;
+    attr->attrs[i].string = string;
+    attr->attrs[i].length = alen;
   } else if (atype == GEM_REAL) {
     if (reals == NULL) return GEM_NULLVALUE;
     attr->attrs[i].length = 0;
@@ -200,7 +208,7 @@ gem_setAttrib(gemAttrs **attrx, /*@null@*/ char *name, int atype, int alen,
   if (attr->attrs[i].name == NULL) {
     gem_free(attr->attrs[i].integers);
     gem_free(attr->attrs[i].reals);
-    gem_free(attr->attrs[i].string);
+    if (attr->attrs[i].type != GEM_POINTER) gem_free(attr->attrs[i].string);
     attr->nattrs--;
     return GEM_ALLOC;
   }
@@ -222,7 +230,7 @@ gem_clrAttribs(gemAttrs **attrx)
     gem_free(attr->attrs[i].name);
     gem_free(attr->attrs[i].integers);
     gem_free(attr->attrs[i].reals);
-    gem_free(attr->attrs[i].string);
+    if (attr->attrs[i].type != GEM_POINTER) gem_free(attr->attrs[i].string);
   }
   gem_free(attr->attrs);
   gem_free(attr);
