@@ -9,7 +9,7 @@ TDIR = $(GEM_BLOC)\test
 OBJS = dbraattr.obj dboolean.obj dclose.obj dequiv.obj dinit.obj dload.obj \
 	dmprops.obj drelease.obj dtessel.obj dtopattr.obj devald.obj \
 	dcurva.obj dregen.obj dcopy.obj dsave.obj dsamesrf.obj deval.obj \
-	dieval.obj
+	dieval.obj dsensit.obj
 
 
 default:	start $(TDIR)\dtest.exe end
@@ -37,7 +37,7 @@ udp.obj:	$(OCSM_SRC)\udp.c $(EGADSINC)\egads.h
 
 OpenCSM.obj:	$(OCSM_SRC)\OpenCSM.c $(OCSM_SRC)\common.h \
 		$(OCSM_SRC)\OpenCSM.h $(EGADSINC)\egads.h
-	cl /c $(COPTS) /DGEOM_EGADS /I$(OCSM_SRC) /I$(EGADSINC) OpenCSM.c
+	cl /c $(OCOPT) /DGEOM_EGADS /I$(OCSM_SRC) /I$(EGADSINC) OpenCSM.c
 
 $(OBJS):	$(IDIR)\gem.h $(IDIR)\brep.h $(IDIR)\model.h \
 		$(IDIR)\drep.h $(OCSM_SRC)\OpenCSM.h $(EGADSINC)\egads.h
