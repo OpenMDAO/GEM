@@ -1,0 +1,9 @@
+LIBRARY triLinearContinuous
+EXPORTS
+gemFreeQuilt
+gemDefineQuilt
+gemInvEvaluation
+gemInterpolation
+gemInterpolate_bar
+gemIntegration
+gemIntegrate_bar

@@ -31,7 +31,7 @@ triConstantDiscontinuous.obj:	triConstantDiscontinuous.c
 		..\lib\triConstantDiscontinuous.lib \
 		..\lib\triConstantDiscontinuous.exp
 	link /out:..\lib\triConstantDiscontinuous.dll /dll \
-		/def:method.def triConstantDiscontinuous.obj triUtils.obj \
+		/def:triConstantDiscontinuous.def triConstantDiscontinuous.obj triUtils.obj \
 		..\lib\gem.lib
 	$(MCOMP) /manifest ..\lib\triConstantDiscontinuous.dll.manifest \
 		/outputresource:..\lib\triConstantDiscontinuous.dll;2
@@ -44,7 +44,7 @@ triLinearContinuous.obj:	triLinearContinuous.c
 	-del ..\lib\triLinearContinuous.dll ..\lib\triLinearContinuous.lib \
 		..\lib\triLinearContinuous.exp
 	link /out:..\lib\triLinearContinuous.dll /dll \
-		/def:method.def triLinearContinuous.obj triUtils.obj \
+		/def:triLinearContinuous.def triLinearContinuous.obj triUtils.obj \
 		..\lib\gem.lib
 	$(MCOMP) /manifest ..\lib\triLinearContinuous.dll.manifest \
 		/outputresource:..\lib\triLinearContinuous.dll;2
@@ -58,7 +58,7 @@ triLinearDiscontinuous.obj:	triLinearDiscontinuous.c
 		..\lib\triLinearDiscontinuous.lib \
 		..\lib\triLinearDiscontinuous.exp
 	link /out:..\lib\triLinearDiscontinuous.dll /dll \
-		/def:method.def triLinearDiscontinuous.obj triUtils.obj \
+		/def:triLinearDiscontinuous.def triLinearDiscontinuous.obj triUtils.obj \
 		..\lib\gem.lib
 	$(MCOMP) /manifest ..\lib\triDiscrete.dll.manifest \
 		/outputresource:..\lib\triLinearDiscontinuous.dll;2
@@ -70,7 +70,7 @@ quadLinearContinuous.obj:	quadLinearContinuous.c
 	-del ..\lib\quadLinearContinuous.dll ..\lib\quadLinearContinuous.lib \
 		..\lib\quadLinearContinuous.exp
 	link /out:..\lib\quadLinearContinuous.dll /dll \
-		/def:method.def quadLinearContinuous.obj ..\lib\gem.lib
+		/def:quadLinearContinuous.def quadLinearContinuous.obj ..\lib\gem.lib
 	$(MCOMP) /manifest ..\lib\quadLinearContinuous.dll.manifest \
 		/outputresource:..\lib\quadLinearContinuous.dll;2
 
