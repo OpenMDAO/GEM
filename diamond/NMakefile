@@ -9,7 +9,9 @@ TDIR = $(GEM_BLOC)\test
 OBJS = dbraattr.obj dboolean.obj dclose.obj dequiv.obj dinit.obj dload.obj \
 	dmprops.obj drelease.obj dtessel.obj dtopattr.obj devald.obj \
 	dcurva.obj dregen.obj dcopy.obj dsave.obj dsamesrf.obj deval.obj \
-	dieval.obj dsensit.obj
+	dieval.obj 
+
+#dsensit.obj
 
 
 default:	start $(TDIR)\dtest.exe end
