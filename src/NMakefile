@@ -60,7 +60,7 @@ triLinearDiscontinuous.obj:	triLinearDiscontinuous.c
 	link /out:..\lib\triLinearDiscontinuous.dll /dll \
 		/def:triLinearDiscontinuous.def triLinearDiscontinuous.obj triUtils.obj \
 		..\lib\gem.lib
-	$(MCOMP) /manifest ..\lib\triDiscrete.dll.manifest \
+	$(MCOMP) /manifest ..\lib\triLinearDiscontinuous.dll.manifest \
 		/outputresource:..\lib\triLinearDiscontinuous.dll;2
 
 quadLinearContinuous.obj:	quadLinearContinuous.c
